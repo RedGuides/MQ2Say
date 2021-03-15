@@ -19,7 +19,6 @@ std::list<CXStr> sPendingSay;
 std::map<std::string, std::chrono::steady_clock::time_point> mAlertTimers;
 
 int iOldVScrollPos = 0;
-int iStripFirstStmlLines = 0;
 int intIgnoreDelay = 300;
 char szSayINISection[MAX_STRING] = { 0 };
 char szWinTitle[MAX_STRING] = { 0 };
@@ -795,23 +794,14 @@ PLUGIN_API void SetGameState(int GameState)
 
 PLUGIN_API bool OnIncomingChat(const char* Line, DWORD Color)
 {
-	if (GetGameState() != GAMESTATE_INGAME)
-		return false;
-
-	if (!bSayStatus)
-		return false;
-
-	switch (Color)
+	if (GetGameState() == GAMESTATE_INGAME
+		&& bSayStatus
+		&& Color == USERCOLOR_SAY)
 	{
-		case 256://Color: 256 - Other player /say messages
-			DoAlerts(Line);
-			break;
-		default:
-			//Don't Know these, lets see what it is.
-			if (bSayDebug) WriteChatf("[\ar%i\ax]\a-t: \ap%s", Color, Line);
-			break;
+		DoAlerts(Line);
 	}
-	return true;
+
+	return false;
 }
 
 PLUGIN_API void OnPulse()
@@ -950,7 +940,6 @@ PLUGIN_API void InitializePlugin()
 	AddMQ2Data("SayWnd", dataSayWnd);
 	pSayType = new MQ2SayType;
 	AddCommand("/mqsay", MQSay);
-	iStripFirstStmlLines = AddMQ2Benchmark("StripFirstStmlLines");
 	LoadSaySettings();
 	if (!bSayStatus)
 	{
@@ -969,7 +958,5 @@ PLUGIN_API VOID ShutdownPlugin()
 	RemoveCommand("/mqsay");
 	RemoveMQ2Data("SayWnd");
 	delete pSayType;
-	RemoveMQ2Benchmark(iStripFirstStmlLines);
-	iStripFirstStmlLines = 0;
 	DestroySayWnd();
 }
