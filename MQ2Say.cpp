@@ -897,8 +897,6 @@ public:
 		TypeMember(Title);
 	}
 
-	~MQ2SayType() {}
-
 	bool GetMember(MQVarPtr VarPtr, const char* Member, char* Index, MQTypeVar& Dest) override
 	{
 		MQTypeMember* pMember = MQ2SayType::FindMember(Member);
@@ -935,16 +933,6 @@ public:
 		}
 
 		return true;
-	}
-
-	bool FromData(MQVarPtr& VarPtr, MQTypeVar& Source) override
-	{
-		return false;
-	}
-
-	bool FromString(MQVarPtr& VarPtr, const char* Source) override
-	{
-		return false;
 	}
 };
 MQ2SayType* pSayType = nullptr;
