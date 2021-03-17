@@ -1,11 +1,11 @@
 Other Authors
-    EQMule, Brainiac, Lax, Knightly 
+    EQMule, Brainiac, Lax, Knightly, Chatwiththisname
 
 Software Requirements
     Macroquest 2 
 
 Server Type
-    Live 
+    Live, Test
 
 This plugin is intended to catch say messages in close proximity to your group that may otherwise be lost in the game spam, or hidden behind another window. This is important due to the fact that if a Gamemaster is checking to see if your group is AFK they will frequently pop in and say something to your group, and if you don't respond quick enough you can find your group kicked and/or banned from the game.
 
@@ -34,8 +34,20 @@ alerts <on/off>
 autoscroll <on/off>
 - will scroll the window to keep the newest message visible.
 
-IgnoreDelay <time in seconds>
+ignoredelay <time in seconds>
 - defines how long a new say from the player is ignored before a new alert is sounded.
+
+group <on/off>
+- Ignore say messages from Group members
+
+guild <on/off>
+- Ignore say messages from Guild members
+
+fellowship <on/off>
+- Ignore say messages from Fellowship members
+
+raid <on/off>
+- Ignore say messages from Raid members
 
 timestamps <on/off>
 - Toggles displaying of timestamps on new say messages.

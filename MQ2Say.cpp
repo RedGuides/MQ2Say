@@ -29,6 +29,11 @@ bool bAutoScroll = true;
 bool bSaveByChar = true;
 bool bSayAlerts = true;
 bool bSayTimestamps = true;
+bool bIgnoreGroup = false;
+bool bIgnoreGuild = false;
+bool bIgnoreFellowship = false;
+bool bIgnoreRaid= false;
+
 class CMQSayWnd;
 CMQSayWnd* MQSayWnd = nullptr;
 
@@ -350,6 +355,14 @@ void LoadSaySettings()
 	GetPrivateProfileString("Settings", "SaveByChar", bSaveByChar ? "on" : "off", szTemp, MAX_STRING, INIFileName);
 	bSaveByChar = (!_strnicmp(szTemp, "on", 3));
 	intIgnoreDelay = GetPrivateProfileInt("Settings", "IgnoreDelay", intIgnoreDelay, INIFileName);
+	GetPrivateProfileString("Settings", "IgnoreGroup", bIgnoreGroup ? "on" : "off", szTemp, MAX_STRING, INIFileName);
+	bIgnoreGroup = (!_strnicmp(szTemp, "on", 3));
+	GetPrivateProfileString("Settings", "IgnoreGuild", bIgnoreGuild ? "on" : "off", szTemp, MAX_STRING, INIFileName);
+	bIgnoreGuild = (!_strnicmp(szTemp, "on", 3));
+	GetPrivateProfileString("Settings", "IgnoreFellowship", bIgnoreFellowship ? "on" : "off", szTemp, MAX_STRING, INIFileName);
+	bIgnoreFellowship = (!_strnicmp(szTemp, "on", 3));
+	GetPrivateProfileString("Settings", "IgnoreRaid", bIgnoreRaid ? "on" : "off", szTemp, MAX_STRING, INIFileName);
+	bIgnoreRaid = (!_strnicmp(szTemp, "on", 3));
 }
 
 void LoadSayFromINI(PCSIDLWND pWindow)
@@ -556,7 +569,7 @@ void MQSay(PSPAWNINFO pChar, PCHAR Line)
 		WriteChatf("[\arMQ2Say\ax] \awPlugin is:\ax %s", bSayStatus ? "\agOn\ax" : "\arOff\ax");
 		WriteChatf("Usage: /mqsay <on/off>");
 		WriteChatf("/mqsay [Option Name] <value/on/off>");
-		WriteChatf("Valid options are Reset, Clear, Alerts, Autoscroll, IgnoreDelay, Reload, Timestamps, Title");
+		WriteChatf("Valid options are Reset, Clear, Alerts, Autoscroll, IgnoreDelay, Fellowship, Group, Guild, Raid, Reload, Timestamps, Title");
 	}
 	else if (!_stricmp(Arg, "on"))
 	{
