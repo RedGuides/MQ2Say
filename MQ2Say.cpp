@@ -42,7 +42,7 @@ public:
 		//SetWindowStyle(CWS_AUTOVSCROLL | CWS_AUTOHSCROLL | CWS_TITLE | CWS_MINIMIZE | CWS_RELATIVERECT | CWS_BORDER | CWS_RESIZEALL);
 		RemoveStyle(CWS_TRANSPARENT | CWS_CLOSE);
 		SetBGColor(0xFF000000);//black background
-		InputBox = (CTextEntryWnd*)GetChildItem("CW_ChatInput");
+		InputBox = (CEditWnd*)GetChildItem("CW_ChatInput");
 		InputBox->AddStyle(CWS_AUTOVSCROLL | CWS_RELATIVERECT | CWS_BORDER);// 0x800C0;
 		this->SetFaded(false);
 		this->SetEscapable(false);
@@ -207,7 +207,7 @@ public:
 		((CXWnd*)MQSayWnd->OutputBox)->SetVScrollPos(MQSayWnd->OutputBox->GetVScrollMax());
 		MQSayWnd->FontSize = size;
 	};
-	CTextEntryWnd* InputBox;
+	CEditWnd* InputBox;
 	CStmlWnd* OutputBox;
 	//CXWnd* OutWnd;
 	//struct _CSIDLWND* OutStruct;
