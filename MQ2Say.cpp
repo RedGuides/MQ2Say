@@ -7,16 +7,17 @@
 #include <iostream>
 #include <chrono>
 
+PreSetup("MQ2Say");
+PLUGIN_VERSION(1.0);
+
+constexpr int CMD_HIST_MAX = 50;
 constexpr int MAX_CHAT_SIZE = 700;
 constexpr int LINES_PER_FRAME = 3;
-
-PreSetup("MQ2Say");
 
 std::list<std::string> sPendingSay;
 std::map<std::string, std::chrono::steady_clock::time_point> mAlertTimers;
 
-const unsigned int CMD_HIST_MAX = 50;
-int ulOldVScrollPos = 0;
+int iOldVScrollPos = 0;
 int  bmStripFirstStmlLines = 0;
 int intIgnoreDelay = 300;
 char szSayINISection[MAX_STRING] = { 0 };
@@ -39,7 +40,6 @@ public:
 		DebugSpew("CMQSayWnd()");
 		SetWndNotification(CMQSayWnd);
 		SetWindowStyle(CWS_CLIENTMOVABLE | CWS_USEMYALPHA | CWS_RESIZEALL | CWS_BORDER | CWS_MINIMIZE | CWS_TITLE);
-		//SetWindowStyle(CWS_AUTOVSCROLL | CWS_AUTOHSCROLL | CWS_TITLE | CWS_MINIMIZE | CWS_RELATIVERECT | CWS_BORDER | CWS_RESIZEALL);
 		RemoveStyle(CWS_TRANSPARENT | CWS_CLOSE);
 		SetBGColor(0xFF000000);//black background
 		InputBox = (CEditWnd*)GetChildItem("CW_ChatInput");
@@ -68,7 +68,7 @@ public:
 
 	int WndNotification(CXWnd* pWnd, unsigned int Message, void* data)
 	{
-		if (pWnd == 0)
+		if (pWnd == nullptr)
 		{
 			if (Message == XWM_CLOSE)
 			{
@@ -118,7 +118,7 @@ public:
 							iCurrentCmd++;
 							if (iCurrentCmd < (static_cast<int>(sCmdHistory.size())) && iCurrentCmd >= 0)
 							{
-								std::string s = (std::string)sCmdHistory.at(iCurrentCmd);
+								const std::string& s = sCmdHistory.at(iCurrentCmd);
 								((CXWnd*)InputBox)->SetWindowTextA(CXStr(s.c_str()));
 							}
 							else
@@ -134,7 +134,7 @@ public:
 							iCurrentCmd--;
 							if (iCurrentCmd >= 0 && sCmdHistory.size() > 0)
 							{
-								std::string s = (std::string)sCmdHistory.at(iCurrentCmd);
+								const std::string& s = sCmdHistory.at(iCurrentCmd);
 								((CXWnd*)InputBox)->SetWindowTextA(CXStr(s.c_str()));
 							}
 							else if (iCurrentCmd < 0)
@@ -148,7 +148,7 @@ public:
 			}
 			else
 			{
-				DebugSpew("InputBox message %Xh, value: %Xh", Message, data);
+				//DebugSpew("InputBox message %Xh, value: %Xh", Message, data);
 			}
 		}
 		else if (Message == XWM_LINK)
@@ -172,6 +172,7 @@ public:
 		{
 			//DebugSpew("MQ2Say: 0x%X, Msg: 0x%X, value: %Xh",pWnd,Message,data);
 		}
+
 		return CSidlScreenWnd::WndNotification(pWnd, Message, data);
 	};
 
@@ -284,10 +285,8 @@ std::string FormatSay(const std::string& strSenderIn, const std::string& strText
 		strTimestamp += "\ax\ar]\ax ";
 		return strTimestamp + strOut;
 	}
-	else
-	{
-		return strOut;
-	}
+
+	return strOut;
 }
 
 void WriteSay(const std::string& SaySender, const std::string& SayText)
@@ -306,17 +305,16 @@ void WriteSay(const std::string& SaySender, const std::string& SayText)
 	ConvertItemTags(NewText, FALSE);
 	sPendingSay.push_back(NewText.Ptr->Text);
 	delete[] szProcessed;
-	return;
 }
 
-void DoAlerts(std::string Line)
+void DoAlerts(const std::string& Line)
 {
 	if (bSayStatus)
 	{
-		std::vector<std::string> strSaySplit = SplitSay(Line);
-		if (strSaySplit.size() == 2)
+		std::vector<std::string> SaySplit = SplitSay(Line);
+		if (SaySplit.size() == 2)
 		{
-			WriteSay(strSaySplit[0], strSaySplit[1]);
+			WriteSay(SaySplit[0], SaySplit[1]);
 			if (bSayAlerts)
 			{
 				if (strSayAlertCommand[0] == '\0')
@@ -325,11 +323,10 @@ void DoAlerts(std::string Line)
 				}
 				else if (strSayAlertCommand[0] == '/')
 				{
-					if (mAlertTimers.find(strSaySplit[0]) == mAlertTimers.end())
+					if (mAlertTimers.find(SaySplit[0]) == mAlertTimers.end())
 					{
 						EzCommand(strSayAlertCommand);
-						//mAlertTimers.insert(strSaySplit[0], std::chrono::steady_clock::now());
-						mAlertTimers[strSaySplit[0]] = std::chrono::steady_clock::now();
+						mAlertTimers[SaySplit[0]] = std::chrono::steady_clock::now();
 					}
 				}
 				else
@@ -343,7 +340,7 @@ void DoAlerts(std::string Line)
 
 void LoadSaySettings()
 {
-	CHAR szTemp[MAX_STRING] = { 0 };
+	char szTemp[MAX_STRING] = { 0 };
 	GetPrivateProfileString("Settings", "SayStatus", bSayStatus ? "on" : "off", szTemp, MAX_STRING, INIFileName);
 	bSayStatus = (!_strnicmp(szTemp, "on", 3));
 	GetPrivateProfileString("Settings", "SayDebug", bSayDebug ? "on" : "off", szTemp, MAX_STRING, INIFileName);
@@ -353,26 +350,39 @@ void LoadSaySettings()
 	GetPrivateProfileString("Settings", "SaveByChar", bSaveByChar ? "on" : "off", szTemp, MAX_STRING, INIFileName);
 	bSaveByChar = (!_strnicmp(szTemp, "on", 3));
 	intIgnoreDelay = GetPrivateProfileInt("Settings", "IgnoreDelay", intIgnoreDelay, INIFileName);
-	return;
 }
 
 void LoadSayFromINI(PCSIDLWND pWindow)
 {
-	CHAR szTemp[MAX_STRING] = { 0 };
+	char szTemp[MAX_STRING] = { 0 };
+
 	LoadSaySettings();
-	sprintf_s(szSayINISection, "%s.%s", EQADDR_SERVERNAME, ((PSPAWNINFO)pLocalPlayer)->Name);
-	if (!bSaveByChar)
-		sprintf_s(szSayINISection, "Default");
-	//left top right bottom
-	int left = GetPrivateProfileInt(szSayINISection, "SayLeft", 10, INIFileName);
-	if (left == 2000)
+
+	if (bSaveByChar && pLocalPlayer)
 	{
-		left = 10;
+		sprintf_s(szSayINISection, "%s.%s", EQADDR_SERVERNAME, ((PSPAWNINFO)pLocalPlayer)->Name);
 	}
-	pWindow->SetLocation({ (LONG)left,
+	else
+	{
+		strcpy_s(szSayINISection, "Default");
+	}
+
+	GetPrivateProfileString(szSayINISection, "Alerts", bSayAlerts ? "on" : "off", szTemp, MAX_STRING, INIFileName);
+	bSayAlerts = !_strnicmp(szTemp, "on", 3);
+	const int i = GetPrivateProfileString(szSayINISection, "AlertCommand", "/multiline ; /beep ; /timed 1 /beep ; /timed 2 /beep", strSayAlertCommand, MAX_STRING, INIFileName);
+	if (i == 0)
+	{
+		strcpy_s(strSayAlertCommand, "/multiline ; /beep ; /timed 1 /beep ; /timed 2 /beep");
+	}
+	GetPrivateProfileString(szSayINISection, "Timestamps", bSayTimestamps ? "on" : "off", szTemp, MAX_STRING, INIFileName);
+	bSayTimestamps = !_strnicmp(szTemp, "on", 3);
+
+	//The settings for default location are also in the reset command.
+	pWindow->SetLocation({ (LONG)GetPrivateProfileInt(szSayINISection,"SayLeft", 300,INIFileName),
 		(LONG)GetPrivateProfileInt(szSayINISection,"SayTop",       10,INIFileName),
-		(LONG)GetPrivateProfileInt(szSayINISection,"SayRight",    410,INIFileName),
+		(LONG)GetPrivateProfileInt(szSayINISection,"SayRight",    600,INIFileName),
 		(LONG)GetPrivateProfileInt(szSayINISection,"SayBottom",   210,INIFileName) });
+
 	pWindow->SetLocked((GetPrivateProfileInt(szSayINISection, "Locked", 0, INIFileName) ? true : false));
 	pWindow->SetFades((GetPrivateProfileInt(szSayINISection, "Fades", 0, INIFileName) ? true : false));
 	pWindow->SetFadeDelay(GetPrivateProfileInt(szSayINISection, "Delay", 2000, INIFileName));
@@ -390,14 +400,6 @@ void LoadSayFromINI(PCSIDLWND pWindow)
 	MQSayWnd->SetSayFont(GetPrivateProfileInt(szSayINISection, "FontSize", 4, INIFileName));
 	GetPrivateProfileString(szSayINISection, "WindowTitle", "Say Detection", szTemp, MAX_STRING, INIFileName);
 	pWindow->CSetWindowText(szTemp);
-	GetPrivateProfileString(szSayINISection, "Alerts", bSayAlerts ? "on" : "off", szTemp, MAX_STRING, INIFileName);
-	int i = GetPrivateProfileString(szSayINISection, "AlertCommand", "/multiline ; /beep ; /timed 1 /beep ; /timed 2 /beep", strSayAlertCommand, MAX_STRING, INIFileName);
-	if (i == 0)
-	{
-		strcpy_s(strSayAlertCommand, "/multiline ; /beep ; /timed 1 /beep ; /timed 2 /beep");
-	}
-	GetPrivateProfileString(szSayINISection, "Timestamps", bSayTimestamps ? "on" : "off", szTemp, MAX_STRING, INIFileName);
-	//SetCXStr(&pWindow->WindowText,szTemp);
 }
 
 template <unsigned int _Size>LPSTR SafeItoa(int _Value, char(&_Buffer)[_Size], int _Radix)
@@ -412,12 +414,16 @@ template <unsigned int _Size>LPSTR SafeItoa(int _Value, char(&_Buffer)[_Size], i
 
 void SaveSayToINI(PCSIDLWND pWindow)
 {
-	CHAR szTemp[MAX_STRING] = { 0 };
+	char szTemp[MAX_STRING] = { 0 };
 	WritePrivateProfileString("Settings", "SayStatus", bSayStatus ? "on" : "off", INIFileName);
 	WritePrivateProfileString("Settings", "SayDebug", bSayDebug ? "on" : "off", INIFileName);
 	WritePrivateProfileString("Settings", "AutoScroll", bAutoScroll ? "on" : "off", INIFileName);
 	WritePrivateProfileString("Settings", "SaveByChar", bSaveByChar ? "on" : "off", INIFileName);
 	WritePrivateProfileString("Settings", "IgnoreDelay", SafeItoa(intIgnoreDelay, szTemp, 10), INIFileName);
+	WritePrivateProfileString(szSayINISection, "Alerts", bSayAlerts ? "on" : "off", INIFileName);
+	WritePrivateProfileString(szSayINISection, "AlertCommand", strSayAlertCommand, INIFileName);
+	WritePrivateProfileString(szSayINISection, "Timestamps", bSayTimestamps ? "on" : "off", INIFileName);
+	WritePrivateProfileString(szSayINISection, "WindowTitle", szTemp, INIFileName);
 	if (pWindow->IsMinimized())
 	{
 		WritePrivateProfileString(szSayINISection, "SayTop", SafeItoa(pWindow->GetOldLocation().top, szTemp, 10), INIFileName);
@@ -447,30 +453,23 @@ void SaveSayToINI(PCSIDLWND pWindow)
 	WritePrivateProfileString(szSayINISection, "BGTint.blue", SafeItoa(col.B, szTemp, 10), INIFileName);
 	WritePrivateProfileString(szSayINISection, "FontSize", SafeItoa(MQSayWnd->FontSize, szTemp, 10), INIFileName);
 	GetCXStr(pWindow->CGetWindowText(), szTemp, MAX_STRING);
-	//GetCXStr(pWindow->WindowText,szTemp, MAX_STRING);
-	WritePrivateProfileString(szSayINISection, "WindowTitle", szTemp, INIFileName);
-	WritePrivateProfileString(szSayINISection, "Alerts", bSayAlerts ? "on" : "off", INIFileName);
-	WritePrivateProfileString(szSayINISection, "AlertCommand", strSayAlertCommand, INIFileName);
-	WritePrivateProfileString(szSayINISection, "Timestamps", bSayTimestamps ? "on" : "off", INIFileName);
 }
 
 void CreateSayWnd()
 {
-	DebugSpew("MQ2Say::CreateSayWnd()");
 	if (MQSayWnd)
 	{
 		return;
 	}
-	else
+
+	MQSayWnd = new CMQSayWnd("ChatWindow");
+	if (!MQSayWnd)
 	{
-		MQSayWnd = new CMQSayWnd("ChatWindow");
-		if (!MQSayWnd)
-		{
-			return;
-		}
+		return;
 	}
+
 	LoadSayFromINI((PCSIDLWND)MQSayWnd);
-	SaveSayToINI((PCSIDLWND)MQSayWnd); // A) we're masochists, B) this creates the file if its not there..
+	SaveSayToINI((PCSIDLWND)MQSayWnd);
 }
 
 void DestroySayWnd()
@@ -478,42 +477,39 @@ void DestroySayWnd()
 	if (MQSayWnd)
 	{
 		sPendingSay.clear();
+
 		SaveSayToINI((PCSIDLWND)MQSayWnd);
+
 		delete MQSayWnd;
 		MQSayWnd = nullptr;
-		ulOldVScrollPos = 0;
+
+		iOldVScrollPos = 0;
 	}
 }
 
 void MQSayFont(PSPAWNINFO pChar, PCHAR Line)
 {
-	if (MQSayWnd)
+	if (MQSayWnd && Line[0])
 	{
-		if (Line[0])
+		const int size = atoi(Line);
+		if (size < 0 || size > 10)
 		{
-			int size = atoi(Line);
-			if (size < 0 || size>10)
-			{
-				WriteChatf("Usage: /sayfont 0-10");
-				return;
-			}
-			MQSayWnd->SetSayFont(size);
-			SaveSayToINI((PCSIDLWND)MQSayWnd);
+			WriteChatf("Usage: /sayfont 0-10");
+			return;
 		}
+		MQSayWnd->SetSayFont(size);
+
+		SaveSayToINI((PCSIDLWND)MQSayWnd);
 	}
 }
-// VOID MQSayClear(PSPAWNINFO pChar, PCHAR Line)
 
 void MQSayClear()
 {
-	//int sizeofCXWnd = sizeof(CXWnd);
-	//int sizeofCSidlScreenWnd = sizeof(CSidlScreenWnd);
 	if (MQSayWnd)
 	{
-		//PEQCHATWINDOW pChatw = (PEQCHATWINDOW)MQSayWnd;
 		CChatWindow* saywnd = (CChatWindow*)MQSayWnd;
 		saywnd->Clear();
-		ulOldVScrollPos = 0;
+		iOldVScrollPos = 0;
 		MQSayWnd->OutBoxLines = 0;
 	}
 }
@@ -523,95 +519,101 @@ void SetSayTitle(PSPAWNINFO pChar, PCHAR Line)
 	if (MQSayWnd)
 	{
 		MQSayWnd->CSetWindowText(Line);
-		//SetCXStr(&MQSayWnd->WindowText,Line);
 	}
+}
+
+bool AdjustBoolSetting(const char* SettingCmd, const char* INIsection, const char* INIkey, const char* INIvalue, bool currentValue)
+{
+	if (INIvalue[0] != '\0')
+	{
+		if (!_stricmp(INIvalue, "on"))
+		{
+			currentValue = true;
+		}
+		else if (!_stricmp(INIvalue, "off"))
+		{
+			currentValue = false;
+		}
+		else
+		{
+			WriteChatf("Usage: /mqsay %s [on | off]\n IE: /mqsay %s on", SettingCmd, SettingCmd);
+			return currentValue;
+		}
+
+		WritePrivateProfileString(INIsection, INIkey, currentValue ? "on" : "off", INIFileName);
+	}
+
+	WriteChatf("[\arMQ2Say\ax] \aw%s is: %s", INIkey, (currentValue ? "\agOn" : "\arOff"));
+	return currentValue;
 }
 
 void MQSay(PSPAWNINFO pChar, PCHAR Line)
 {
 	PCSIDLWND pWindow = (PCSIDLWND)MQSayWnd;
 	CHAR szTemp[MAX_STRING] = { 0 };
-	int i = 2;
-	if (MQSayWnd)
-	{
-		if (!_stricmp(Line, "reset"))
-		{
-			MQSayWnd->SetLocked(false);
-			CXRect rc = { 300, 10, 600, 210 };
-			((CXWnd*)MQSayWnd)->Move(rc, false);
-			SaveSayToINI((PCSIDLWND)MQSayWnd);
-			return;
-		}
-		else if (!_stricmp(Line, "clear"))
-		{
-			MQSayClear();
-			return;
-		}
-	}
+
 	char Arg[MAX_STRING] = { 0 };
 	GetArg(Arg, Line, 1);
 	//Display Command Syntax
-	if (Arg[0] == '\0')
+	if (Arg[0] == '\0' || !_stricmp(Arg, "help"))
 	{
 		WriteChatf("[\arMQ2Say\ax] \awPlugin is:\ax %s", bSayStatus ? "\agOn\ax" : "\arOff\ax");
 		WriteChatf("Usage: /mqsay <on/off>");
 		WriteChatf("/mqsay [Option Name] <value/on/off>");
 		WriteChatf("Valid options are Reset, Clear, Alerts, Autoscroll, IgnoreDelay, Reload, Timestamps, Title");
-		return;
 	}
-	//user wants to adjust Say Status
-	if (!_stricmp(Arg, "on"))
+	else if (!_stricmp(Arg, "on"))
 	{
 		CreateSayWnd();
 		bSayStatus = true;
-		WriteChatf("Say Status is now: \agOn.");
+		WriteChatf("[\arMQ2Say\ax] \awSay Status is:\ax \agOn.");
 		WritePrivateProfileString("Settings", "SayStatus", bSayStatus ? "on" : "off", INIFileName);
-		return;
 	}
-	if (!_stricmp(Arg, "off"))
+	else if (!_stricmp(Arg, "off"))
 	{
 		DestroySayWnd();
 		bSayStatus = false;
-		WriteChatf("Say Status is now: \arOff.");
-		WritePrivateProfileString("Settings", "SayStatus", bSayDebug ? "on" : "off", INIFileName);
-		return;
+		WriteChatf("[\arMQ2Say\ax] \awSay Status is:\ax \arOff.");
+		WritePrivateProfileString("Settings", "SayStatus", bSayStatus ? "on" : "off", INIFileName);
 	}
-	if (!_stricmp(Arg, "reload"))
+	else if (!_stricmp(Arg, "reload"))
 	{
 		LoadSayFromINI((PCSIDLWND)MQSayWnd);
 		WriteChatf("[\arMQ2Say\ax] \a-wPlugin Settings Reloaded.\ax");
-		return;
 	}
-	//user wants to adjust debug
-	if (!_stricmp(Arg, "debug"))
+	else if (!_stricmp(Line, "reset"))
 	{
-		GetArg(Arg, Line, 2);
-		if (Arg[0] == '\0')
+		if (MQSayWnd)
 		{
-			WriteChatf("Debug is currently: %s", (bSayDebug ? "\agOn" : "\arOff"));
-			return;
-		}
-		//turn it on.
-		if (!_stricmp(Arg, "on"))
-		{
-			bSayDebug = true;
-			WriteChatf("Debug is now: \agOn.");
-		}
-		//turn it off.
-		else if (!_stricmp(Arg, "off"))
-		{
-			bSayDebug = false;
-			WriteChatf("Debug is now: \arOff.");
+			MQSayWnd->SetLocked(false);
+			// The settings below are also in the LoadSayFromINI function
+			CXRect rc = { 300, 10, 600, 210 };
+			((CXWnd*)MQSayWnd)->Move(rc, false);
+
+			SaveSayToINI((PCSIDLWND)MQSayWnd);
 		}
 		else
 		{
-			WriteChatf("Usage: /mqsay debug [on | off]\n IE: /mqsay debug on");
+			WriteChatf("[\arMQ2Say\ax] \awReset is only valid when Say Window is visible (\ag/mqsay on\ax).\ax");
 		}
-		WritePrivateProfileString("Settings", "SayDebug", bSayDebug ? "on" : "off", INIFileName);
-		return;
 	}
-	//user wants to change the window title
-	if (!_stricmp(Arg, "title"))
+	else if (!_stricmp(Line, "clear"))
+	{
+		if (MQSayWnd)
+		{
+			MQSayClear();
+		}
+		else
+		{
+			WriteChatf("[\arMQ2Say\ax] \awClear is only valid when Say Window is visible (\ag/mqsay on\ax).\ax");
+		}
+	}
+	else if (!_stricmp(Arg, "debug"))
+	{
+		GetArg(Arg, Line, 2);
+		bSayDebug = AdjustBoolSetting("debug", "Settings", "SayDebug", Arg, bSayDebug);
+	}
+	else if (!_stricmp(Arg, "title"))
 	{
 		GetArg(Arg, Line, 2);
 		if (Arg[0] == '\0')
@@ -620,6 +622,10 @@ void MQSay(PSPAWNINFO pChar, PCHAR Line)
 			{
 				GetCXStr(pWindow->CGetWindowText(), szTemp, MAX_STRING);
 				WriteChatf("The Window title is currently: \ar%s\ax", szTemp);
+			}
+			else
+			{
+				WriteChatf("[\arMQ2Say\ax] \arSay window not found, cannot retrieve Title.");
 			}
 		}
 		else
@@ -632,182 +638,86 @@ void MQSay(PSPAWNINFO pChar, PCHAR Line)
 			MQSayWnd->CSetWindowText(Arg);
 			WritePrivateProfileString(szSayINISection, "WindowTitle", Arg, INIFileName);
 		}
-		return;
 	}
-	//user wants to adjust the font size
-	if (!_stricmp(Arg, "font"))
+	else if (!_stricmp(Arg, "font"))
 	{
 		GetArg(Arg, Line, 2);
 		if (Arg[0] == '\0')
 		{
-			WriteChatf("The font size is currently: %s", MQSayWnd->FontSize);
-			return;
+			WriteChatf("[\arMQ2Say\ax] \awThe font size is currently:\ax %s", MQSayWnd->FontSize);
 		}
 		else if (atoi(Arg) > 0)
 		{
 			MQSayWnd->SetSayFont(atoi(Arg));
+			WritePrivateProfileString(szSayINISection, "FontSize", SafeItoa(MQSayWnd->FontSize, szTemp, 10), INIFileName);
 		}
 		else
 		{
 			WriteChatf("Usage: /mqsay font <font size>\n IE: /mqsay font 5");
 		}
-		WritePrivateProfileString(szSayINISection, "FontSize", SafeItoa(MQSayWnd->FontSize, szTemp, 10), INIFileName);
-		return;
 	}
-	//user wants to adjust the Alert Ignore Timer
-	if (!_stricmp(Arg, "IgnoreDelay"))
+	else if (!_stricmp(Arg, "IgnoreDelay"))
 	{
 		GetArg(Arg, Line, 2);
 		if (Arg[0] == '\0')
 		{
-			WriteChatf("The Ignore Delay is currently: %i", intIgnoreDelay);
-			return;
-		}
-		else if (atoi(Arg) >= 0)
-		{
-			intIgnoreDelay = (atoi(Arg));
-			WriteChatf("The Ignore Delay is now set to: %i", intIgnoreDelay);
+			WriteChatf("[\arMQ2Say\ax] \awThe Ignore Delay is currently:\ax %i", intIgnoreDelay);
 		}
 		else
 		{
-			WriteChatf("Usage: /mqsay ignoredelay <Time In Seconds>\n IE: /mqsay ignoredelay 300");
+			const int ignoreDelay = atoi(Arg) >= 0;
+			if (ignoreDelay >= 0)
+			{
+				intIgnoreDelay = ignoreDelay;
+				WriteChatf("[\arMQ2Say\ax] \awThe Ignore Delay is now set to:\ax %i", intIgnoreDelay);
+				WritePrivateProfileString("Settings", "IgnoreDelay", SafeItoa(intIgnoreDelay, szTemp, 10), INIFileName);
+			}
+			else
+			{
+				WriteChatf("Usage: /mqsay ignoredelay <Time In Seconds>\n IE: /mqsay ignoredelay 300");
+			}
 		}
-		WritePrivateProfileString("Settings", "IgnoreDelay", SafeItoa(intIgnoreDelay, szTemp, 10), INIFileName);
-		return;
 	}
-	//user wants to audible alerts
-	if (!_stricmp(Arg, "alerts"))
+	else if (!_stricmp(Arg, "alerts"))
 	{
 		GetArg(Arg, Line, 2);
-		if (Arg[0] == '\0')
-		{
-			WriteChatf("Alerts are currently: %s", (bSayAlerts ? "\agOn" : "\arOff"));
-			return;
-		}
-		//turn it on.
-		if (!_stricmp(Arg, "on"))
-		{
-			bSayAlerts = true;
-			WriteChatf("Alerts are now: \agOn.");
-		}
-		//turn it off.
-		else if (!_stricmp(Arg, "off"))
-		{
-			bSayAlerts = false;
-			WriteChatf("Alerts are now: \arOff.");
-		}
-		else
-		{
-			WriteChatf("Usage: /mqsay alerts [on | off]\n IE: /mqsay alerts on");
-		}
-		WritePrivateProfileString(szSayINISection, "Alerts", bSayAlerts ? "on" : "off", INIFileName);
-		return;
+		bSayAlerts = AdjustBoolSetting("alerts", szSayINISection, "Alerts", Arg, bSayAlerts);
 	}
-	//user wants to display timestamps
-	if (!_stricmp(Arg, "timestamps"))
+	else if (!_stricmp(Arg, "timestamps"))
 	{
 		GetArg(Arg, Line, 2);
-		if (Arg[0] == '\0')
-		{
-			WriteChatf("Timestamps are currently: %s", (bSayTimestamps ? "\agOn" : "\arOff"));
-			return;
-		}
-		//turn it on.
-		if (!_stricmp(Arg, "on"))
-		{
-			bSayTimestamps = true;
-			WriteChatf("Timestamps are now: \agOn.");
-		}
-		//turn it off.
-		else if (!_stricmp(Arg, "off"))
-		{
-			bSayTimestamps = false;
-			WriteChatf("Timestamps are now: \arOff.");
-		}
-		else
-		{
-			WriteChatf("Usage: /mqsay timestamps [on | off]\n IE: /mqsay timestamps on");
-		}
-		WritePrivateProfileString(szSayINISection, "Timestamps", bSayTimestamps ? "on" : "off", INIFileName);
-		return;
+		bSayTimestamps = AdjustBoolSetting("timestamps", szSayINISection, "Timestamps", Arg, bSayTimestamps);
 	}
-	//user wants to adjust autoscroll
-	if (!_stricmp(Arg, "autoscroll"))
+	else if (!_stricmp(Arg, "autoscroll"))
 	{
 		GetArg(Arg, Line, 2);
-		if (Arg[0] == '\0')
-		{
-			WriteChatf("Autoscroll is currently: %s", (bAutoScroll ? "\agOn" : "\arOff"));
-			return;
-		}
-		//turn it on.
-		if (!_stricmp(Arg, "on"))
-		{
-			bAutoScroll = true;
-			WriteChatf("Autoscroll is now: \agOn.");
-		}
-		//turn it off.
-		else if (!_stricmp(Arg, "off"))
-		{
-			bAutoScroll = false;
-			WriteChatf("Autoscroll is now: \arOff.");
-		}
-		else
-		{
-			WriteChatf("Usage: /mqsay autoscroll [on | off]\n IE: /mqsay autoscroll on");
-		}
-		WritePrivateProfileString("Settings", "AutoScroll", bAutoScroll ? "on" : "off", INIFileName);
-		return;
+		bAutoScroll = AdjustBoolSetting("autoscroll", szSayINISection, "AutoScroll", Arg, bAutoScroll);
 	}
-	//user wants to adjust SaveByChar
-	if (!_stricmp(Arg, "SaveByChar"))
+	else if (!_stricmp(Arg, "SaveByChar"))
 	{
 		GetArg(Arg, Line, 2);
-		if (Arg[0] == '\0')
-		{
-			WriteChatf("SaveByChar is currently: %s", (bSaveByChar ? "\agOn" : "\arOff"));
-			return;
-		}
-		//turn it on.
-		if (!_stricmp(Arg, "on"))
-		{
-			bSaveByChar = true;
-			WriteChatf("SaveByChar is now: \agOn.");
-		}
-		//turn it off.
-		else if (!_stricmp(Arg, "off"))
-		{
-			bSaveByChar = false;
-			WriteChatf("SaveByChar is now: \arOff.");
-		}
-		else
-		{
-			WriteChatf("Usage: /mqsay SaveByChar [on | off]\n IE: /mqsay SaveByChar on");
-		}
-		WritePrivateProfileString("Settings", "SaveByChar", bSaveByChar ? "on" : "off", INIFileName);
-		return;
+		bSaveByChar = AdjustBoolSetting("SaveByChar", "Settings", "SaveByChar", Arg, bSaveByChar);
 	}
-	WriteChatf("%s was not a valid option. Valid options are Reset, Clear, Alerts, Autoscroll, IgnoreDelay, Reload, Timestamps, Title", Arg);
+	else
+	{
+		WriteChatf("[\arMQ2Say\ax] %s was not a valid option. Use \ag/mqsay help\ax to show options.", Arg);
+	}
 }
 
 PLUGIN_API VOID OnReloadUI()
 {
-	DebugSpewAlways("MQ2Say::OnReloadUI()");
 	// redraw window when you load/reload UI
 	CreateSayWnd();
 }
 
 PLUGIN_API VOID OnCleanUI()
 {
-	DebugSpewAlways("MQ2Say::OnCleanUI()");
 	// destroy SayWnd before server select & while reloading UI
 	DestroySayWnd();
 }
 
 PLUGIN_API VOID SetGameState(DWORD GameState)
 {
-	DebugSpew("MQ2Say::SetGameState()");
-	if (GameState != GAMESTATE_CHARCREATE) RemoveMQ2KeyBind("MQ2CSCHAT");
 	if (GameState == GAMESTATE_INGAME && !MQSayWnd)
 	{
 		// we entered the game, set up shop
@@ -820,65 +730,33 @@ PLUGIN_API VOID SetGameState(DWORD GameState)
 
 PLUGIN_API DWORD OnIncomingChat(PCHAR Line, DWORD Color)
 {
-	if (gGameState != GAMESTATE_INGAME) return 0;
-	if (!bSayStatus) return 0;
-	if (bSayDebug)
+	if (GetGameState() == GAMESTATE_INGAME
+		&& bSayStatus
+		&& Color == USERCOLOR_SAY)
 	{
-		char szMsg[MAX_STRING] = { 0 };
-		strcpy_s(szMsg, Line);
-		if (strchr(szMsg, '\x12'))
-		{
-			// Message includes link (item tags/spell), must clean first
-			const int len = strlen(szMsg);
-			auto pszCleanOrg = std::make_unique<char[]>(len + 64);
-			char* szClean = pszCleanOrg.get();
-			strcpy_s(szClean, len + 64, szMsg);
-			CXStr out;
-#if defined(ROF2EMU) || defined(UFEMU)
-			if (CXStr* str = CleanItemTags(&out, szClean))
-			{
-#else
-			if (CXStr* str = CleanItemTags(&out, szClean, false))
-			{
-#endif
-				GetCXStr(str->Ptr, szClean, len + 64);
-			}
-			strncpy_s(szMsg, szClean, MAX_STRING - 1);
-			}
-		WriteChatf("[\ar%i\ax]\a-t: \ap%s", Color, szMsg);
-		}
-	switch (Color)
-	{
-	case 256://Color: 256 - Other player /say messages
 		DoAlerts(Line);
-		break;
-	default:
-		//Don't Know these, lets see what it is.
-		if (bSayDebug) WriteChatf("[\ar%i\ax]\a-t: \ap%s", Color, Line);
-		break;
-	}
-	return 0;
 	}
 
-// This is called every time WriteChatColor is called by MQ2Main or any plugin,
-// IGNORING FILTERS, IF YOU NEED THEM MAKE SURE TO IMPLEMENT THEM. IF YOU DONT
-// CALL CEverQuest::dsp_chat MAKE SURE TO IMPLEMENT EVENTS HERE
+	return 0;
+}
 
 PLUGIN_API VOID OnPulse()
 {
 	if (MQSayWnd)
 	{
-		if (gGameState == GAMESTATE_INGAME && MQSayWnd->GetZLayer() != 0)
+		if (GetGameState() == GAMESTATE_INGAME && MQSayWnd->GetZLayer() != 0)
 		{
 			MQSayWnd->SetZLayer(0);
 		}
 		if (!sPendingSay.empty())
 		{
 			// set 'old' to current
-			ulOldVScrollPos = MQSayWnd->OutputBox->GetVScrollPos();
+			iOldVScrollPos = MQSayWnd->OutputBox->GetVScrollPos();
+
 			// scroll down if autoscroll enabled, or current position is the bottom of SayWnd
-			bool bScrollDown = bAutoScroll ? true : (MQSayWnd->OutputBox->GetVScrollPos() == MQSayWnd->OutputBox->GetVScrollMax() ? true : false);
-			DWORD ThisPulse = sPendingSay.size();
+			bool bScrollDown = bAutoScroll || (MQSayWnd->OutputBox->GetVScrollPos() == MQSayWnd->OutputBox->GetVScrollMax());
+
+			size_t ThisPulse = sPendingSay.size();
 			if (ThisPulse > LINES_PER_FRAME)
 			{
 				ThisPulse = LINES_PER_FRAME;
@@ -897,7 +775,6 @@ PLUGIN_API VOID OnPulse()
 					MQSayWnd->OutputBox->AppendSTML(sPendingSay.begin()->c_str());
 					sPendingSay.pop_front();
 				}
-				//DebugSpew("NEW: max %u - pos: %u",MQSayWnd->OutputBox->VScrollMax,MQSayWnd->OutputBox->VScrollPos);
 			}
 			if (bScrollDown)
 			{
@@ -909,13 +786,14 @@ PLUGIN_API VOID OnPulse()
 				// autoscroll is disabled and current vscroll position was not at the bottom, retain position
 				// note: if the window is full (VScrollMax value between 9793 and 9835), this will not adjust with
 				// the flushing of buffer that keeps window a certain max size
-				((CXWnd*)MQSayWnd->OutputBox)->SetVScrollPos(ulOldVScrollPos);
+				((CXWnd*)MQSayWnd->OutputBox)->SetVScrollPos(iOldVScrollPos);
 			}
 		}
 		if (InHoverState())
 		{
 			((CXWnd*)MQSayWnd)->DoAllDrawing();
 		}
+
 		static std::chrono::steady_clock::time_point PulseTimer = std::chrono::steady_clock::now();
 		if (!mAlertTimers.empty() && std::chrono::steady_clock::now() >= PulseTimer + std::chrono::seconds(1))
 		{
@@ -1002,10 +880,8 @@ BOOL dataSayWnd(PCHAR szName, MQ2TYPEVAR & Dest)
 	return true;
 }
 
-// Returns a string, takes a reference to a string as input (so no copy)
 PLUGIN_API VOID InitializePlugin()
 {
-	DebugSpewAlways("Initializing MQ2Say");
 	// Add commands, macro parameters, hooks, etc.
 	AddMQ2Data("SayWnd", dataSayWnd);
 	pSayWndType = new MQ2SayType;
@@ -1014,17 +890,16 @@ PLUGIN_API VOID InitializePlugin()
 	LoadSaySettings();
 	if (!bSayStatus)
 	{
-		WriteChatf("[\arMQ2Say\ax] \a-wPlugin Loaded sucessfully. Window not displayed due to the plugin being turned off in the ini. Type /mqsay on to turn it back on.\ax");
+		WriteChatf("[\arMQ2Say\ax] \a-wPlugin Loaded successfully. Window not displayed due to the plugin being turned off in the ini. Type /mqsay on to turn it back on.\ax");
 	}
 	else
 	{
-		WriteChatf("[\arMQ2Say\ax] \a-wPlugin Loaded sucessfully.\ax");
+		WriteChatf("[\arMQ2Say\ax] \a-wPlugin Loaded successfully.\ax");
 	}
 }
 
 PLUGIN_API VOID ShutdownPlugin()
 {
-	DebugSpewAlways("Shutting down MQ2Say");
 	sPendingSay.clear();
 	// Remove commands, macro parameters, hooks, etc.
 	RemoveCommand("/mqsay");
