@@ -18,7 +18,7 @@ std::list<std::string> sPendingSay;
 std::map<std::string, std::chrono::steady_clock::time_point> mAlertTimers;
 
 int iOldVScrollPos = 0;
-int  bmStripFirstStmlLines = 0;
+int bmStripFirstStmlLines = 0;
 int intIgnoreDelay = 300;
 char szSayINISection[MAX_STRING] = { 0 };
 char szWinTitle[MAX_STRING] = { 0 };
@@ -463,10 +463,6 @@ void CreateSayWnd()
 	}
 
 	MQSayWnd = new CMQSayWnd("ChatWindow");
-	if (!MQSayWnd)
-	{
-		return;
-	}
 
 	LoadSayFromINI((PCSIDLWND)MQSayWnd);
 	SaveSayToINI((PCSIDLWND)MQSayWnd);
@@ -489,7 +485,7 @@ void DestroySayWnd()
 
 void MQSayFont(PSPAWNINFO pChar, PCHAR Line)
 {
-	if (MQSayWnd && Line[0])
+	if (MQSayWnd && Line[0] != '\0')
 	{
 		const int size = atoi(Line);
 		if (size < 0 || size > 10)
@@ -550,7 +546,7 @@ bool AdjustBoolSetting(const char* SettingCmd, const char* INIsection, const cha
 void MQSay(PSPAWNINFO pChar, PCHAR Line)
 {
 	PCSIDLWND pWindow = (PCSIDLWND)MQSayWnd;
-	CHAR szTemp[MAX_STRING] = { 0 };
+	char szTemp[MAX_STRING] = { 0 };
 
 	char Arg[MAX_STRING] = { 0 };
 	GetArg(Arg, Line, 1);
