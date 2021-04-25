@@ -21,7 +21,6 @@ int iOldVScrollPos = 0;
 int bmStripFirstStmlLines = 0;
 int intIgnoreDelay = 300;
 char szSayINISection[MAX_STRING] = { 0 };
-char szWinTitle[MAX_STRING] = { 0 };
 char strSayAlertCommand[MAX_STRING] = { 0 };
 bool bSayStatus = true;
 bool bSayDebug = false;
@@ -319,24 +318,38 @@ void DoAlerts(const std::string& Line)
 		std::vector<std::string> SaySplit = SplitSay(Line);
 		if (SaySplit.size() == 2)
 		{
-			WriteSay(SaySplit[0], SaySplit[1]);
-			if (bSayAlerts)
+			char* speakerName = &SaySplit[0][0];
+			if (bIgnoreGroup && IsGroupMember(speakerName)
+				|| bIgnoreGuild && IsGuildMember(speakerName)
+				|| bIgnoreFellowship && IsFellowshipMember(speakerName)
+				|| bIgnoreRaid && IsRaidMember(speakerName) != -1)
 			{
-				if (strSayAlertCommand[0] == '\0')
+				if (bSayDebug)
 				{
-					WriteChatf("[\arMQ2Say\ax] \arError\ax: \a-wSay Detected, Alerts are turned on, but AlertCommand is not set in the INI\ax");
+					WriteChatf("[\arMQ2Say\ax] \ayDebug\ax: Skipping output due to ignore settings.");
 				}
-				else if (strSayAlertCommand[0] == '/')
+			}
+			else
+			{
+				WriteSay(SaySplit[0], SaySplit[1]);
+				if (bSayAlerts)
 				{
-					if (mAlertTimers.find(SaySplit[0]) == mAlertTimers.end())
+					if (strSayAlertCommand[0] == '\0')
 					{
-						EzCommand(strSayAlertCommand);
-						mAlertTimers[SaySplit[0]] = std::chrono::steady_clock::now();
+						WriteChatf("[\arMQ2Say\ax] \arError\ax: \a-wSay Detected, Alerts are turned on, but AlertCommand is not set in the INI\ax");
 					}
-				}
-				else
-				{
-					WriteChatf("\arMQ2Say Error\ax: AlertCommand in INI must begin with a / and be a valid EQ or MQ2 Command.");
+					else if (strSayAlertCommand[0] == '/')
+					{
+						if (mAlertTimers.find(SaySplit[0]) == mAlertTimers.end())
+						{
+							EzCommand(strSayAlertCommand);
+							mAlertTimers[SaySplit[0]] = std::chrono::steady_clock::now();
+						}
+					}
+					else
+					{
+						WriteChatf("\arMQ2Say Error\ax: AlertCommand in INI must begin with a / and be a valid EQ or MQ2 Command.");
+					}
 				}
 			}
 		}
@@ -355,14 +368,6 @@ void LoadSaySettings()
 	GetPrivateProfileString("Settings", "SaveByChar", bSaveByChar ? "on" : "off", szTemp, MAX_STRING, INIFileName);
 	bSaveByChar = (!_strnicmp(szTemp, "on", 3));
 	intIgnoreDelay = GetPrivateProfileInt("Settings", "IgnoreDelay", intIgnoreDelay, INIFileName);
-	GetPrivateProfileString("Settings", "IgnoreGroup", bIgnoreGroup ? "on" : "off", szTemp, MAX_STRING, INIFileName);
-	bIgnoreGroup = (!_strnicmp(szTemp, "on", 3));
-	GetPrivateProfileString("Settings", "IgnoreGuild", bIgnoreGuild ? "on" : "off", szTemp, MAX_STRING, INIFileName);
-	bIgnoreGuild = (!_strnicmp(szTemp, "on", 3));
-	GetPrivateProfileString("Settings", "IgnoreFellowship", bIgnoreFellowship ? "on" : "off", szTemp, MAX_STRING, INIFileName);
-	bIgnoreFellowship = (!_strnicmp(szTemp, "on", 3));
-	GetPrivateProfileString("Settings", "IgnoreRaid", bIgnoreRaid ? "on" : "off", szTemp, MAX_STRING, INIFileName);
-	bIgnoreRaid = (!_strnicmp(szTemp, "on", 3));
 }
 
 void LoadSayFromINI(PCSIDLWND pWindow)
@@ -379,6 +384,15 @@ void LoadSayFromINI(PCSIDLWND pWindow)
 	{
 		strcpy_s(szSayINISection, "Default");
 	}
+
+	GetPrivateProfileString(szSayINISection, "IgnoreGroup", bIgnoreGroup ? "on" : "off", szTemp, MAX_STRING, INIFileName);
+	bIgnoreGroup = (!_strnicmp(szTemp, "on", 3));
+	GetPrivateProfileString(szSayINISection, "IgnoreGuild", bIgnoreGuild ? "on" : "off", szTemp, MAX_STRING, INIFileName);
+	bIgnoreGuild = (!_strnicmp(szTemp, "on", 3));
+	GetPrivateProfileString(szSayINISection, "IgnoreFellowship", bIgnoreFellowship ? "on" : "off", szTemp, MAX_STRING, INIFileName);
+	bIgnoreFellowship = (!_strnicmp(szTemp, "on", 3));
+	GetPrivateProfileString(szSayINISection, "IgnoreRaid", bIgnoreRaid ? "on" : "off", szTemp, MAX_STRING, INIFileName);
+	bIgnoreRaid = (!_strnicmp(szTemp, "on", 3));
 
 	GetPrivateProfileString(szSayINISection, "Alerts", bSayAlerts ? "on" : "off", szTemp, MAX_STRING, INIFileName);
 	bSayAlerts = !_strnicmp(szTemp, "on", 3);
@@ -433,9 +447,14 @@ void SaveSayToINI(PCSIDLWND pWindow)
 	WritePrivateProfileString("Settings", "AutoScroll", bAutoScroll ? "on" : "off", INIFileName);
 	WritePrivateProfileString("Settings", "SaveByChar", bSaveByChar ? "on" : "off", INIFileName);
 	WritePrivateProfileString("Settings", "IgnoreDelay", SafeItoa(intIgnoreDelay, szTemp, 10), INIFileName);
+	WritePrivateProfileString(szSayINISection, "IgnoreGroup", bIgnoreGroup ? "on" : "off", INIFileName);
+	WritePrivateProfileString(szSayINISection, "IgnoreGuild", bIgnoreGuild ? "on" : "off", INIFileName);
+	WritePrivateProfileString(szSayINISection, "IgnoreFellowship", bIgnoreFellowship ? "on" : "off", INIFileName);
+	WritePrivateProfileString(szSayINISection, "IgnoreRaid", bIgnoreRaid ? "on" : "off", INIFileName);
 	WritePrivateProfileString(szSayINISection, "Alerts", bSayAlerts ? "on" : "off", INIFileName);
 	WritePrivateProfileString(szSayINISection, "AlertCommand", strSayAlertCommand, INIFileName);
 	WritePrivateProfileString(szSayINISection, "Timestamps", bSayTimestamps ? "on" : "off", INIFileName);
+	GetCXStr(pWindow->CGetWindowText(), szTemp, MAX_STRING);
 	WritePrivateProfileString(szSayINISection, "WindowTitle", szTemp, INIFileName);
 	if (pWindow->IsMinimized())
 	{
@@ -465,7 +484,6 @@ void SaveSayToINI(PCSIDLWND pWindow)
 	WritePrivateProfileString(szSayINISection, "BGTint.green", SafeItoa(col.G, szTemp, 10), INIFileName);
 	WritePrivateProfileString(szSayINISection, "BGTint.blue", SafeItoa(col.B, szTemp, 10), INIFileName);
 	WritePrivateProfileString(szSayINISection, "FontSize", SafeItoa(MQSayWnd->FontSize, szTemp, 10), INIFileName);
-	GetCXStr(pWindow->CGetWindowText(), szTemp, MAX_STRING);
 }
 
 void CreateSayWnd()
@@ -686,6 +704,26 @@ void MQSay(PSPAWNINFO pChar, PCHAR Line)
 				WriteChatf("Usage: /mqsay ignoredelay <Time In Seconds>\n IE: /mqsay ignoredelay 300");
 			}
 		}
+	}
+	else if (!_stricmp(Arg, "group"))
+	{
+		GetArg(Arg, Line, 2);
+		bIgnoreGroup = AdjustBoolSetting("group", szSayINISection, "IgnoreGroup", Arg, bIgnoreGroup);
+	}
+	else if (!_stricmp(Arg, "guild"))
+	{
+		GetArg(Arg, Line, 2);
+		bIgnoreGuild = AdjustBoolSetting("guild", szSayINISection, "IgnoreGuild", Arg, bIgnoreGuild);
+	}
+	else if (!_stricmp(Arg, "fellowship"))
+	{
+		GetArg(Arg, Line, 2);
+		bIgnoreFellowship = AdjustBoolSetting("fellowship", szSayINISection, "IgnoreFellowship", Arg, bIgnoreFellowship);
+	}
+	else if (!_stricmp(Arg, "raid"))
+	{
+		GetArg(Arg, Line, 2);
+		bIgnoreRaid = AdjustBoolSetting("raid", szSayINISection, "IgnoreRaid", Arg, bIgnoreRaid);
 	}
 	else if (!_stricmp(Arg, "alerts"))
 	{
