@@ -11,9 +11,9 @@
 PreSetup("MQ2Say");
 PLUGIN_VERSION(1.0);
 
-constexpr int LINES_PER_FRAME = 3;
 constexpr int CMD_HIST_MAX = 50;
 constexpr int MAX_CHAT_SIZE = 700;
+constexpr int LINES_PER_FRAME = 3;
 
 std::list<CXStr> sPendingSay;
 std::map<std::string, std::chrono::steady_clock::time_point> mAlertTimers;
@@ -21,7 +21,6 @@ std::map<std::string, std::chrono::steady_clock::time_point> mAlertTimers;
 int iOldVScrollPos = 0;
 int intIgnoreDelay = 300;
 char szSayINISection[MAX_STRING] = { 0 };
-char szWinTitle[MAX_STRING] = { 0 };
 char strSayAlertCommand[MAX_STRING] = { 0 };
 bool bSayStatus = true;
 bool bSayDebug = false;
@@ -104,11 +103,13 @@ public:
 					InputBox->InputText.clear();
 					if (text[0] == '/')
 					{
-						DoCommand((SPAWNINFO*)pLocalPlayer, text.c_str());
+						DoCommand(pLocalPlayer, text.c_str());
 					}
 					else
 					{
-						Echo((SPAWNINFO*)pLocalPlayer, (char*)text.c_str());
+						char szBuffer[MAX_STRING] = { 0 };
+						strcpy_s(szBuffer, text.c_str());
+						Echo(pLocalPlayer, szBuffer);
 					}
 				}
 
@@ -143,7 +144,7 @@ public:
 							iCurrentCmd--;
 							if (iCurrentCmd >= 0 && sCmdHistory.size() > 0)
 							{
-								std::string s = sCmdHistory.at(iCurrentCmd);
+								const std::string& s = sCmdHistory.at(iCurrentCmd);
 								InputBox->SetWindowText(s.c_str());
 							}
 							else if (iCurrentCmd < 0)
@@ -403,7 +404,7 @@ void LoadSayFromINI(CSidlScreenWnd* pWindow)
 	bSayTimestamps = GetPrivateProfileBool(szSayINISection, "Timestamps", bSayTimestamps, INIFileName);
 
 	//The settings for default location are also in the reset command.
-	pWindow->SetLocation({ (LONG)GetPrivateProfileInt(szSayINISection,"SayLeft",      300,INIFileName),
+	pWindow->SetLocation({ (LONG)GetPrivateProfileInt(szSayINISection,"SayLeft", 300,INIFileName),
 		(LONG)GetPrivateProfileInt(szSayINISection,"SayTop",       10,INIFileName),
 		(LONG)GetPrivateProfileInt(szSayINISection,"SayRight",    600,INIFileName),
 		(LONG)GetPrivateProfileInt(szSayINISection,"SayBottom",   210,INIFileName) });
@@ -481,11 +482,6 @@ void CreateSayWnd()
 
 	MQSayWnd = new CMQSayWnd("ChatWindow");
 
-	if (!MQSayWnd)
-	{
-		return;
-	}
-
 	LoadSayFromINI(MQSayWnd);
 	SaveSayToINI(MQSayWnd);
 }
@@ -507,7 +503,7 @@ void DestroySayWnd()
 
 void MQSayFont(SPAWNINFO* pChar, char* Line)
 {
-	if (MQSayWnd && Line[0])
+	if (MQSayWnd && Line[0] != '\0')
 	{
 		const int size = GetIntFromString(Line, -1);
 		if (size < 0 || size > 10)
@@ -690,11 +686,6 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 			}
 		}
 	}
-	else if (!_stricmp(Arg, "fellowship"))
-	{
-		GetArg(Arg, Line, 2);
-		bIgnoreFellowship = AdjustBoolSetting("fellowship", szSayINISection, "IgnoreFellowship", Arg, bIgnoreFellowship);
-	}
 	else if (!_stricmp(Arg, "group"))
 	{
 		GetArg(Arg, Line, 2);
@@ -704,6 +695,11 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 	{
 		GetArg(Arg, Line, 2);
 		bIgnoreGuild = AdjustBoolSetting("guild", szSayINISection, "IgnoreGuild", Arg, bIgnoreGuild);
+	}
+	else if (!_stricmp(Arg, "fellowship"))
+	{
+		GetArg(Arg, Line, 2);
+		bIgnoreFellowship = AdjustBoolSetting("fellowship", szSayINISection, "IgnoreFellowship", Arg, bIgnoreFellowship);
 	}
 	else if (!_stricmp(Arg, "raid"))
 	{
@@ -750,7 +746,6 @@ PLUGIN_API void OnCleanUI()
 
 PLUGIN_API void SetGameState(int GameState)
 {
-	DebugSpew("MQ2Say::SetGameState()");
 	if (GameState == GAMESTATE_INGAME && !MQSayWnd)
 	{
 		// we entered the game, set up shop
@@ -818,8 +813,6 @@ PLUGIN_API void OnPulse()
 				MQSayWnd->OutputBox->SetVScrollPos(iOldVScrollPos);
 			}
 		}
-
-		// this lets the window draw when we are dead and "hovering"
 		if (InHoverState())
 		{
 			MQSayWnd->DoAllDrawing();
