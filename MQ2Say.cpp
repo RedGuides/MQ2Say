@@ -9,7 +9,7 @@
 #include <chrono>
 
 PreSetup("MQ2Say");
-PLUGIN_VERSION(1.0);
+PLUGIN_VERSION(1.1);
 
 constexpr int CMD_HIST_MAX = 50;
 constexpr int MAX_CHAT_SIZE = 700;
@@ -32,6 +32,8 @@ bool bIgnoreGroup = false;
 bool bIgnoreGuild = false;
 bool bIgnoreFellowship = false;
 bool bIgnoreRaid= false;
+std::string strLastSay = { };
+std::string strLastSpeaker = { };
 
 class CMQSayWnd;
 CMQSayWnd* MQSayWnd = nullptr;
@@ -180,7 +182,7 @@ public:
 		}
 
 		return CSidlScreenWnd::WndNotification(pWnd, Message, data);
-	};
+	}
 
 	void SetSayFont(int size) // brainiac 12-12-2007
 	{
@@ -208,7 +210,7 @@ public:
 		OutputBox->SetVScrollPos(OutputBox->GetVScrollMax());
 
 		FontSize = size;
-	};
+	}
 
 	void Clear()
 	{
@@ -305,6 +307,8 @@ void WriteSay(const std::string& SaySender, const std::string& SayText)
 	{
 		return;
 	}
+	strLastSpeaker = SaySender;
+	strLastSay = SayText;
 	std::string SayGMFlag = SayCheckGM(SaySender);
 	std::string Line = FormatSay(SaySender, SayText);
 	MQSayWnd->SetVisible(true);
@@ -842,11 +846,15 @@ public:
 	enum SayWndMembers
 	{
 		Title = 1,
+		LastSay,
+		LastSpeaker
 	};
 
 	MQ2SayType() :MQ2Type("saywnd")
 	{
 		TypeMember(Title);
+		TypeMember(LastSay);
+		TypeMember(LastSpeaker);
 	}
 
 	bool GetMember(MQVarPtr VarPtr, const char* Member, char* Index, MQTypeVar& Dest) override
@@ -855,22 +863,30 @@ public:
 		if (!pMember)
 			return false;
 
+		// Default to string type since that's our most common return
+		Dest.Type = mq::datatypes::pStringType;
+
 		switch ((SayWndMembers)pMember->ID)
 		{
-		case Title:
-		{
-			if (MQSayWnd)
+			case LastSay:
+				Dest.Ptr = &strLastSay[0];
+				return !strLastSay.empty();
+			case LastSpeaker:
+				Dest.Ptr = &strLastSpeaker[0];
+				return !strLastSpeaker.empty();
+			case Title:
 			{
-				strcpy_s(DataTypeTemp, MQSayWnd->GetWindowText().c_str());
+				if (MQSayWnd)
+				{
+					strcpy_s(DataTypeTemp, MQSayWnd->GetWindowText().c_str());
 
-				Dest.Ptr = &DataTypeTemp[0];
-				Dest.Type = mq::datatypes::pStringType;
-				return true;
+					Dest.Ptr = &DataTypeTemp[0];
+					return true;
+				}
+				break;
 			}
-			break;
-		}
-		default:
-			break;
+			default:
+				break;
 		}
 		return false;
 	}
