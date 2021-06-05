@@ -9,7 +9,7 @@
 #include <chrono>
 
 PreSetup("MQ2Say");
-PLUGIN_VERSION(1.1);
+PLUGIN_VERSION(1.2);
 
 constexpr int CMD_HIST_MAX = 50;
 constexpr int MAX_CHAT_SIZE = 700;
@@ -31,7 +31,8 @@ bool bSayTimestamps = true;
 bool bIgnoreGroup = false;
 bool bIgnoreGuild = false;
 bool bIgnoreFellowship = false;
-bool bIgnoreRaid= false;
+bool bIgnoreRaid = false;
+bool bAlertPerSpeaker = true;
 std::string strLastSay = { };
 std::string strLastSpeaker = { };
 
@@ -354,10 +355,11 @@ void DoAlerts(const std::string& Line)
 					}
 					else if (strSayAlertCommand[0] == '/')
 					{
-						if (mAlertTimers.find(SaySplit[0]) == mAlertTimers.end())
+						const std::string theSpeaker = bAlertPerSpeaker ? SaySplit[0] : "TheSpeaker";
+						if (mAlertTimers.find(theSpeaker) == mAlertTimers.end())
 						{
 							EzCommand(strSayAlertCommand);
-							mAlertTimers[SaySplit[0]] = std::chrono::steady_clock::now();
+							mAlertTimers[theSpeaker] = std::chrono::steady_clock::now();
 						}
 					}
 					else
@@ -376,6 +378,7 @@ void LoadSaySettings()
 	bSayDebug = GetPrivateProfileBool("Settings", "SayDebug", bSayDebug, INIFileName);
 	bAutoScroll = GetPrivateProfileBool("Settings", "AutoScroll", bAutoScroll, INIFileName);
 	bSaveByChar = GetPrivateProfileBool("Settings", "SaveByChar", bSaveByChar, INIFileName);
+	bAlertPerSpeaker = GetPrivateProfileBool("Settings", "AlertPerSpeaker", bAlertPerSpeaker, INIFileName);
 	intIgnoreDelay = GetPrivateProfileInt("Settings", "IgnoreDelay", intIgnoreDelay, INIFileName);
 }
 
@@ -438,6 +441,7 @@ void SaveSayToINI(CSidlScreenWnd* pWindow)
 	WritePrivateProfileBool("Settings", "SayDebug", bSayDebug, INIFileName);
 	WritePrivateProfileBool("Settings", "AutoScroll", bAutoScroll, INIFileName);
 	WritePrivateProfileBool("Settings", "SaveByChar", bSaveByChar, INIFileName);
+	WritePrivateProfileBool("Settings", "AlertPerSpeaker", bAlertPerSpeaker, INIFileName);
 	WritePrivateProfileInt("Settings", "IgnoreDelay", intIgnoreDelay, INIFileName);
 	WritePrivateProfileBool(szSayINISection, "IgnoreGroup", bIgnoreGroup, INIFileName);
 	WritePrivateProfileBool(szSayINISection, "IgnoreGuild", bIgnoreGuild, INIFileName);
@@ -573,7 +577,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		WriteChatf("[\arMQ2Say\ax] \awPlugin is:\ax %s", bSayStatus ? "\agOn\ax" : "\arOff\ax");
 		WriteChatf("Usage: /mqsay <on/off>");
 		WriteChatf("/mqsay [Option Name] <value/on/off>");
-		WriteChatf("Valid options are Reset, Clear, Alerts, Autoscroll, IgnoreDelay, Fellowship, Group, Guild, Raid, Reload, Timestamps, Title");
+		WriteChatf("Valid options are Reset, Clear, Alerts, AlertPerSpeaker, Autoscroll, IgnoreDelay, Fellowship, Group, Guild, Raid, Reload, Timestamps, Title");
 	}
 	else if (!_stricmp(Arg, "on"))
 	{
@@ -714,6 +718,11 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 	{
 		GetArg(Arg, Line, 2);
 		bSayAlerts = AdjustBoolSetting("alerts", szSayINISection, "Alerts", Arg, bSayAlerts);
+	}
+	else if (!_stricmp(Arg, "alertperspeaker"))
+	{
+		GetArg(Arg, Line, 2);
+		bAlertPerSpeaker = AdjustBoolSetting("AlertPerSpeaker", "Settings", "AlertPerSpeaker", Arg, bAlertPerSpeaker);
 	}
 	else if (!_stricmp(Arg, "timestamps"))
 	{
