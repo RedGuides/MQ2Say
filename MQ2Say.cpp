@@ -563,6 +563,10 @@ bool AdjustBoolSetting(const char* SettingCmd, const char* INIsection, const cha
 	return currentValue;
 }
 
+void ShowSetting(bool bSetting, char* szSettingName) {
+	WriteChatf("[\arMQ2Say\ax] \ap%s\aw is currently %s", szSettingName, (bSetting ? "\agOn" : "\arOff"));
+}
+
 void MQSay(SPAWNINFO* pChar, char* Line)
 {
 	char Arg[MAX_STRING] = { 0 };
@@ -573,7 +577,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		WriteChatf("[\arMQ2Say\ax] \awPlugin is:\ax %s", bSayStatus ? "\agOn\ax" : "\arOff\ax");
 		WriteChatf("Usage: /mqsay <on/off>");
 		WriteChatf("/mqsay [Option Name] <value/on/off>");
-		WriteChatf("Valid options are Reset, Clear, Alerts, Autoscroll, IgnoreDelay, Fellowship, Group, Guild, Raid, Reload, Timestamps, Title");
+		WriteChatf("Valid options are Reset, Clear, Alerts, Autoscroll, IgnoreDelay, Fellowship, Group, Guild, Raid, Reload, Timestamps, Title, Settings");
 	}
 	else if (!_stricmp(Arg, "on"))
 	{
@@ -729,6 +733,18 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 	{
 		GetArg(Arg, Line, 2);
 		bSaveByChar = AdjustBoolSetting("SaveByChar", "Settings", "SaveByChar", Arg, bSaveByChar);
+	}
+	else if (!_stricmp(Arg, "Settings")) {
+		ShowSetting(bSayStatus, "Plugin");
+		ShowSetting(bSayDebug, "Debug");
+		ShowSetting(bAutoScroll, "Autoscroll");
+		ShowSetting(bSaveByChar, "SaveByChar");
+		ShowSetting(bSayAlerts, "Alerts");
+		ShowSetting(bSayTimestamps, "Timestamps");
+		ShowSetting(bIgnoreGroup, "Ignore Group");
+		ShowSetting(bIgnoreGuild, "Ignore Guild");
+		ShowSetting(bIgnoreFellowship, "Ignore Fellowship");
+		ShowSetting(bIgnoreRaid, "Ignore Raid");
 	}
 	else
 	{
