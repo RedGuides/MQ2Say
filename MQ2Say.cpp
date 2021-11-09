@@ -943,10 +943,10 @@ struct PluginCheckbox {
 	const char* visiblename;
 	const char* inisection;
 	bool* value;
-	char* helptext;
+	const char* helptext;
 };
 
-static PluginCheckbox checkboxes[] = {
+static const PluginCheckbox checkboxes[] = {
 	{ "SayStatus", "Plugin On / Off", "Settings", &bSayStatus, "Toggle the plugin On / Off.\n\nINI Setting: SayStatus" },
 	{ "SayDebug", "Plugin Debbuging", "Settings", &bSayDebug, "Toggle plugin debugging.\n\nINI Setting: SayDebug" },
 	{ "AutoScroll", "AutoScroll Chat", "Settings", &bAutoScroll, "Toggle autoScrolling of the chat window.\n\nINI Setting: AutoScroll" },
@@ -954,7 +954,7 @@ static PluginCheckbox checkboxes[] = {
 	{ "TimeStamps", "Display Timestamps", szSayINISection, &bSayTimestamps, "Toggle to display timestamps.\n\nINI Setting: TimeStamps" },
 };
 
-static PluginCheckbox ignores[] = {
+static const PluginCheckbox ignores[] = {
 	{ "IgnoreGroup", "Ignore Group Members", szSayINISection, &bIgnoreGroup, "Toggle to ignore your group from triggering the say alert.\n\nINI Setting: IgnoreGroup" },
 	{ "IgnoreGuild", "Ignore Guild Members", szSayINISection, &bIgnoreGuild,  "Toggle to ignore your guild from triggering the say alert.\n\nINI Setting: IgnoreGuild" },
 	{ "IgnoreFellowship", "Ignore Fellowship Members", szSayINISection, &bIgnoreFellowship,  "Toggle to ignore your fellowship from triggering the say alert.\n\nINI Setting: IgnoreFellowship" },
@@ -964,7 +964,7 @@ static PluginCheckbox ignores[] = {
 void SayImGuiSettingsPanel()
 {
 	ImGui::Text("General");
-	for (PluginCheckbox& cb : checkboxes)
+	for (const PluginCheckbox& cb : checkboxes)
 	{
 		if (ImGui::Checkbox(cb.visiblename, cb.value))
 		{
@@ -977,7 +977,7 @@ void SayImGuiSettingsPanel()
 	ImGui::NewLine();
 	ImGui::Text("Ignores");
 	ImGui::Separator();
-	for (PluginCheckbox& cb : ignores)
+	for (const PluginCheckbox cb : ignores)
 	{
 		if (ImGui::Checkbox(cb.visiblename, cb.value))
 		{
@@ -1019,9 +1019,6 @@ void SayImGuiSettingsPanel()
 	ImGui::SameLine();
 	mq::imgui::HelpMarker("This is the slash command you would like to execute an alert triggers. Example: /multiline; /beep; /timed 5 /beep\n\nINISetting: Command Line");
 }
-
-// Defines how long a new say from the player is ignored before a new alert is sounded. Time is in seconds.
-
 
 PLUGIN_API void InitializePlugin()
 {
