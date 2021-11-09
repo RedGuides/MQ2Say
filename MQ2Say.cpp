@@ -7,9 +7,10 @@
 #include <ctime>
 #include <iostream>
 #include <chrono>
+#include <mq/imgui/ImGuiUtils.h>
 
 PreSetup("MQ2Say");
-PLUGIN_VERSION(1.2);
+PLUGIN_VERSION(1.3);
 
 constexpr int CMD_HIST_MAX = 50;
 constexpr int MAX_CHAT_SIZE = 700;
@@ -937,6 +938,91 @@ bool dataSayWnd(const char* szName, MQTypeVar& Dest)
 	return true;
 }
 
+struct PluginCheckbox {
+	const char* name;
+	const char* visiblename;
+	const char* inisection;
+	bool* value;
+	char* helptext;
+};
+
+static PluginCheckbox checkboxes[] = {
+	{ "SayStatus", "Plugin On / Off", "Settings", &bSayStatus, "Toggle the plugin On / Off.\n\nINI Setting: SayStatus" },
+	{ "SayDebug", "Plugin Debbuging", "Settings", &bSayDebug, "Toggle plugin debugging.\n\nINI Setting: SayDebug" },
+	{ "AutoScroll", "AutoScroll Chat", "Settings", &bAutoScroll, "Toggle autoScrolling of the chat window.\n\nINI Setting: AutoScroll" },
+	{ "SaveByChar", "Per Character Settings", "Settings", &bSaveByChar, "Toggle Saving your options per character.\n\nINI Setting: SaveByChar" },
+	{ "TimeStamps", "Display Timestamps", szSayINISection, &bSayTimestamps, "Toggle to display timestamps.\n\nINI Setting: TimeStamps" },
+};
+
+static PluginCheckbox ignores[] = {
+	{ "IgnoreGroup", "Ignore Group Members", szSayINISection, &bIgnoreGroup, "Toggle to ignore your group from triggering the say alert.\n\nINI Setting: IgnoreGroup" },
+	{ "IgnoreGuild", "Ignore Guild Members", szSayINISection, &bIgnoreGuild,  "Toggle to ignore your guild from triggering the say alert.\n\nINI Setting: IgnoreGuild" },
+	{ "IgnoreFellowship", "Ignore Fellowship Members", szSayINISection, &bIgnoreFellowship,  "Toggle to ignore your fellowship from triggering the say alert.\n\nINI Setting: IgnoreFellowship" },
+	{ "IgnoreRaid", "Ignore Raid Members", szSayINISection, &bIgnoreRaid, "Toggle to ignore your raid from triggering the say alert.\n\nINI Setting: IgnoreRaid" },
+};
+
+void SayImGuiSettingsPanel()
+{
+	ImGui::Text("General");
+	for (PluginCheckbox& cb : checkboxes)
+	{
+		if (ImGui::Checkbox(cb.visiblename, cb.value))
+		{
+			WritePrivateProfileBool(cb.inisection, cb.name, cb.value, INIFileName);
+		}
+		ImGui::SameLine();
+		mq::imgui::HelpMarker(cb.helptext);
+	}
+
+	ImGui::NewLine();
+	ImGui::Text("Ignores");
+	ImGui::Separator();
+	for (PluginCheckbox& cb : ignores)
+	{
+		if (ImGui::Checkbox(cb.visiblename, cb.value))
+		{
+			WritePrivateProfileBool(cb.inisection, cb.name, cb.value, INIFileName);
+		}
+		ImGui::SameLine();
+		mq::imgui::HelpMarker(cb.helptext);
+	}
+
+	ImGui::NewLine();
+	ImGui::Text("Alerts");
+	ImGui::Separator();
+	if (ImGui::Checkbox("Alert Per Speaker", &bAlertPerSpeaker)) {
+		WritePrivateProfileBool("Settings", "AlertPerSpeaker", &bAlertPerSpeaker, INIFileName);
+	}
+	ImGui::SameLine();
+	mq::imgui::HelpMarker("Toggle to only alert once per speaker per alert delay.\n\nINISetting: AlertPerSpeaker");
+
+	if (ImGui::Checkbox("Use Alert Command", &bSayAlerts)) {
+		WritePrivateProfileBool(szSayINISection, "Alerts", bSayAlerts, INIFileName);
+	}
+	ImGui::SameLine();
+	mq::imgui::HelpMarker("Toggle to use the Alert Command.\n\nINISetting: Alerts");
+
+	ImGui::SetNextItemWidth(-125);
+	if (ImGui::InputInt("Alert Delay", &intIgnoreDelay)) {
+		if (intIgnoreDelay < 0)
+			intIgnoreDelay = 0;
+		WritePrivateProfileInt("Settings", "IgnoreDelay", intIgnoreDelay, INIFileName);
+	}
+	ImGui::SameLine();
+	mq::imgui::HelpMarker("The time in seconds that you would like to delay from triggering an additional alert per speaker.\n\nINISetting: Alerts");
+
+	ImGui::SetNextItemWidth(-125);
+	if (ImGui::InputTextWithHint("Alert Command", "/ command to execute upon alert", strSayAlertCommand, IM_ARRAYSIZE(strSayAlertCommand)))
+	{
+		WritePrivateProfileString(szSayINISection, "AlertCommand", strSayAlertCommand, INIFileName);
+	}
+	ImGui::SameLine();
+	mq::imgui::HelpMarker("This is the slash command you would like to execute an alert triggers. Example: /multiline; /beep; /timed 5 /beep\n\nINISetting: Command Line");
+}
+
+// Defines how long a new say from the player is ignored before a new alert is sounded. Time is in seconds.
+
+
 PLUGIN_API void InitializePlugin()
 {
 	// Add commands, macro parameters, hooks, etc.
@@ -952,6 +1038,8 @@ PLUGIN_API void InitializePlugin()
 	{
 		WriteChatf("[\arMQ2Say\ax] \a-wPlugin Loaded successfully.\ax");
 	}
+
+	AddSettingsPanel("plugins/Say", SayImGuiSettingsPanel);
 }
 
 PLUGIN_API VOID ShutdownPlugin()
@@ -962,4 +1050,5 @@ PLUGIN_API VOID ShutdownPlugin()
 	RemoveMQ2Data("SayWnd");
 	delete pSayType;
 	DestroySayWnd();
+	RemoveSettingsPanel("plugins/Say");
 }
