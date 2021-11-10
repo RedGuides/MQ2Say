@@ -383,12 +383,8 @@ void LoadSaySettings()
 	intIgnoreDelay = GetPrivateProfileInt("Settings", "IgnoreDelay", intIgnoreDelay, INIFileName);
 }
 
-void LoadSayFromINI(CSidlScreenWnd* pWindow)
+void UpdateszSayINISection()
 {
-	char szTemp[MAX_STRING] = { 0 };
-
-	LoadSaySettings();
-
 	if (bSaveByChar && pLocalPlayer)
 	{
 		sprintf_s(szSayINISection, "%s.%s", EQADDR_SERVERNAME, pLocalPlayer->Name);
@@ -397,6 +393,15 @@ void LoadSayFromINI(CSidlScreenWnd* pWindow)
 	{
 		strcpy_s(szSayINISection, "Default");
 	}
+}
+
+void LoadSayFromINI(CSidlScreenWnd* pWindow)
+{
+	char szTemp[MAX_STRING] = { 0 };
+
+	LoadSaySettings();
+
+	UpdateszSayINISection();
 
 	bIgnoreGroup = GetPrivateProfileBool(szSayINISection, "IgnoreGroup", bIgnoreGroup, INIFileName);
 	bIgnoreGuild = GetPrivateProfileBool(szSayINISection, "IgnoreGuild", bIgnoreGuild, INIFileName);
@@ -743,6 +748,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 	{
 		GetArg(Arg, Line, 2);
 		bSaveByChar = AdjustBoolSetting("SaveByChar", "Settings", "SaveByChar", Arg, bSaveByChar);
+		UpdateszSayINISection();
 	}
 	else if (!_stricmp(Arg, "Settings")) {
 		ShowSetting(bSayStatus, "Plugin");
@@ -950,7 +956,6 @@ static const PluginCheckbox checkboxes[] = {
 	{ "SayStatus", "Plugin On / Off", "Settings", &bSayStatus, "Toggle the plugin On / Off.\n\nINI Setting: SayStatus" },
 	{ "SayDebug", "Plugin Debbuging", "Settings", &bSayDebug, "Toggle plugin debugging.\n\nINI Setting: SayDebug" },
 	{ "AutoScroll", "AutoScroll Chat", "Settings", &bAutoScroll, "Toggle autoScrolling of the chat window.\n\nINI Setting: AutoScroll" },
-	{ "SaveByChar", "Per Character Settings", "Settings", &bSaveByChar, "Toggle Saving your options per character.\n\nINI Setting: SaveByChar" },
 	{ "TimeStamps", "Display Timestamps", szSayINISection, &bSayTimestamps, "Toggle to display timestamps.\n\nINI Setting: TimeStamps" },
 };
 
@@ -974,6 +979,15 @@ void SayImGuiSettingsPanel()
 		mq::imgui::HelpMarker(cb.helptext);
 	}
 
+	// We need to handle SaveByChar individicually so we reload so the szSayINISection is updated
+	if (ImGui::Checkbox("Per Character Settings", &bSaveByChar))
+	{
+		WritePrivateProfileBool("Settings", "SaveByChar", bSaveByChar, INIFileName);
+		UpdateszSayINISection();
+	}
+	ImGui::SameLine();
+	mq::imgui::HelpMarker("Toggle Saving your options per character.\n\nINI Setting: SaveByChar");
+
 	ImGui::NewLine();
 	ImGui::Text("Ignores");
 	ImGui::Separator();
@@ -991,7 +1005,7 @@ void SayImGuiSettingsPanel()
 	ImGui::Text("Alerts");
 	ImGui::Separator();
 	if (ImGui::Checkbox("Alert Per Speaker", &bAlertPerSpeaker)) {
-		WritePrivateProfileBool("Settings", "AlertPerSpeaker", &bAlertPerSpeaker, INIFileName);
+		WritePrivateProfileBool("Settings", "AlertPerSpeaker", bAlertPerSpeaker, INIFileName);
 	}
 	ImGui::SameLine();
 	mq::imgui::HelpMarker("Toggle to only alert once per speaker per alert delay.\n\nINISetting: AlertPerSpeaker");
