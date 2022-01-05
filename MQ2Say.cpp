@@ -588,6 +588,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		WriteChatf("Usage: /mqsay <on/off>");
 		WriteChatf("/mqsay [Option Name] <value/on/off>");
 		WriteChatf("Valid options are Reset, Clear, Alerts, AlertPerSpeaker, Autoscroll, IgnoreDelay, Fellowship, Group, Guild, Raid, Reload, Timestamps, Title, Settings");
+		WriteChatf("/mqsay ui -> will display the say settings panel.");
 	}
 	else if (!_stricmp(Arg, "on"))
 	{
@@ -761,6 +762,9 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		ShowSetting(bIgnoreGuild, "Ignore Guild");
 		ShowSetting(bIgnoreFellowship, "Ignore Fellowship");
 		ShowSetting(bIgnoreRaid, "Ignore Raid");
+	}
+	else if (!_stricmp(Arg, "ui") || !_stricmp(Arg, "gui")) {
+		EzCommand("/mqsettings plugins/say");
 	}
 	else
 	{
