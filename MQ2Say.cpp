@@ -33,6 +33,7 @@ bool bIgnoreGroup = false;
 bool bIgnoreGuild = false;
 bool bIgnoreFellowship = false;
 bool bIgnoreRaid = false;
+bool bFilterNPC = false;
 bool bAlertPerSpeaker = true;
 std::string strLastSay = { };
 std::string strLastSpeaker = { };
@@ -233,39 +234,42 @@ private:
 	int iCurrentCmd;
 };
 
-std::string SayCheckGM(std::string strCheckName)
+bool IsGM(PlayerClient* pSpawn)
 {
-	PSPAWNINFO pSpawn = (PSPAWNINFO)GetSpawnByName(&strCheckName[0]);
-	if (pSpawn)
-	{
-		if (pSpawn->GM)
-		{
-			return " \ar(GM)\ax ";
-		}
-		if (pSpawn->Type == PC)
-		{
-			return "";
-		}
-	}
-	else
-	{
-		return " \ar(GM)\ax ";
-	}
-	return "";
+	return (pSpawn == nullptr) || pSpawn->GM;
 }
 
-std::vector<std::string> SplitSay(const std::string& strLine)
+bool IsNPC(const std::string& strCheckName)
+{
+	PlayerClient* spawn = GetSpawnByPartialName(&strCheckName[0]);
+	if (bSayDebug)
+	{
+		if (spawn == nullptr)
+		{
+			WriteChatf("[\arMQ2Say\ax] \ayDebug\ax: IsNPC could not find spawn.");
+		}
+		else
+		{
+			WriteChatf("[\arMQ2Say\ax] \ayDebug\ax: IsNPC found %s", spawn->Name);
+		}
+	}
+	// Don't actually need the nullptr check here since IsGM checks it, but putting it in case that changes
+	return !(IsGM(spawn) || (spawn && spawn->Type == SPAWN_PLAYER));
+}
+
+std::string SayCheckGM(const std::string& strCheckName)
+{
+	return IsGM(GetSpawnByPartialName(&strCheckName[0])) ? " \ar(GM)\ax " : "";
+}
+
+std::vector<std::string> SplitSay(std::string strLine)
 {
 	std::vector<std::string> vReturn;
-	// Create a string and assign it the value of strLine, if we end up not formatting, then the original string is returned.
-	std::string strOut = strLine;
-	// Find the first space
-	size_t Pos = strLine.find(' ');
-	// If the first space is found (ie, it's not npos)
+	strLine = CleanItemTags(strLine.c_str(), false).c_str();
+	size_t Pos = strLine.find(" says, ");
 	if (Pos != std::string::npos)
 	{
-		// Set strName to the substring starting from 2 and going to Pos - 3 (check the math on this, I'm trying to exclude the space)
-		vReturn.push_back(strLine.substr(2, Pos - 3));
+		vReturn.push_back(strLine.substr(0, Pos));
 		// Find the first quote
 		Pos = strLine.find('\'');
 		// Find the last quote
@@ -277,7 +281,6 @@ std::vector<std::string> SplitSay(const std::string& strLine)
 			vReturn.push_back('"' + strLine.substr(Pos + 1, Pos2 - Pos - 1) + '"');
 		}
 	}
-	// End your split code
 	return vReturn;
 }
 
@@ -311,7 +314,6 @@ void WriteSay(const std::string& SaySender, const std::string& SayText)
 	}
 	strLastSpeaker = SaySender;
 	strLastSay = SayText;
-	std::string SayGMFlag = SayCheckGM(SaySender);
 	std::string Line = FormatSay(SaySender, SayText);
 	MQSayWnd->SetVisible(true);
 	char* szProcessed = new char[MAX_STRING];
@@ -338,7 +340,8 @@ void DoAlerts(const std::string& Line)
 			if (bIgnoreGroup && IsGroupMember(speakerName)
 				|| bIgnoreGuild && IsGuildMember(speakerName)
 				|| bIgnoreFellowship && IsFellowshipMember(speakerName)
-				|| bIgnoreRaid && IsRaidMember(speakerName))
+				|| bIgnoreRaid && IsRaidMember(speakerName)
+				|| bFilterNPC && IsNPC(speakerName))
 			{
 				if (bSayDebug)
 				{
@@ -407,6 +410,7 @@ void LoadSayFromINI(CSidlScreenWnd* pWindow)
 	bIgnoreGuild = GetPrivateProfileBool(szSayINISection, "IgnoreGuild", bIgnoreGuild, INIFileName);
 	bIgnoreFellowship = GetPrivateProfileBool(szSayINISection, "IgnoreFellowship", bIgnoreFellowship, INIFileName);
 	bIgnoreRaid = GetPrivateProfileBool(szSayINISection, "IgnoreRaid", bIgnoreRaid, INIFileName);
+	bFilterNPC = GetPrivateProfileBool(szSayINISection, "FilterNPC", bFilterNPC, INIFileName);
 
 	bSayAlerts = GetPrivateProfileBool(szSayINISection, "Alerts", bSayAlerts, INIFileName);
 	const int i = GetPrivateProfileString(szSayINISection, "AlertCommand", "/multiline ; /beep ; /timed 1 /beep ; /timed 2 /beep", strSayAlertCommand, MAX_STRING, INIFileName);
@@ -453,6 +457,7 @@ void SaveSayToINI(CSidlScreenWnd* pWindow)
 	WritePrivateProfileBool(szSayINISection, "IgnoreGuild", bIgnoreGuild, INIFileName);
 	WritePrivateProfileBool(szSayINISection, "IgnoreFellowship", bIgnoreFellowship, INIFileName);
 	WritePrivateProfileBool(szSayINISection, "IgnoreRaid", bIgnoreRaid, INIFileName);
+	WritePrivateProfileBool(szSayINISection, "FilterNPC", bFilterNPC, INIFileName);
 	WritePrivateProfileBool(szSayINISection, "Alerts", bSayAlerts, INIFileName);
 	WritePrivateProfileString(szSayINISection, "AlertCommand", strSayAlertCommand, INIFileName);
 	WritePrivateProfileBool(szSayINISection, "Timestamps", bSayTimestamps, INIFileName);
@@ -587,7 +592,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		WriteChatf("[\arMQ2Say\ax] \awPlugin is:\ax %s", bSayStatus ? "\agOn\ax" : "\arOff\ax");
 		WriteChatf("Usage: /mqsay <on/off>");
 		WriteChatf("/mqsay [Option Name] <value/on/off>");
-		WriteChatf("Valid options are Reset, Clear, Alerts, AlertPerSpeaker, Autoscroll, IgnoreDelay, Fellowship, Group, Guild, Raid, Reload, Timestamps, Title, Settings");
+		WriteChatf("Valid options are Reset, Clear, Alerts, AlertPerSpeaker, Autoscroll, IgnoreDelay, Fellowship, Group, Guild, Raid, FilterNPC, Reload, Timestamps, Title, Settings");
 		WriteChatf("/mqsay ui -> will display the say settings panel.");
 	}
 	else if (!_stricmp(Arg, "on"))
@@ -725,6 +730,11 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		GetArg(Arg, Line, 2);
 		bIgnoreRaid = AdjustBoolSetting("raid", szSayINISection, "IgnoreRaid", Arg, bIgnoreRaid);
 	}
+	else if (!_stricmp(Arg, "filternpc"))
+	{
+		GetArg(Arg, Line, 2);
+		bFilterNPC = AdjustBoolSetting("filternpc", szSayINISection, "FilterNPC", Arg, bFilterNPC);
+	}
 	else if (!_stricmp(Arg, "alerts"))
 	{
 		GetArg(Arg, Line, 2);
@@ -762,6 +772,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		ShowSetting(bIgnoreGuild, "Ignore Guild");
 		ShowSetting(bIgnoreFellowship, "Ignore Fellowship");
 		ShowSetting(bIgnoreRaid, "Ignore Raid");
+		ShowSetting(bFilterNPC, "Filter NPC");
 	}
 	else if (!_stricmp(Arg, "ui") || !_stricmp(Arg, "gui")) {
 		EzCommand("/mqsettings plugins/say");
@@ -968,6 +979,7 @@ static const PluginCheckbox ignores[] = {
 	{ "IgnoreGuild", "Ignore Guild Members", szSayINISection, &bIgnoreGuild,  "Toggle to ignore your guild from triggering the say alert.\n\nINI Setting: IgnoreGuild" },
 	{ "IgnoreFellowship", "Ignore Fellowship Members", szSayINISection, &bIgnoreFellowship,  "Toggle to ignore your fellowship from triggering the say alert.\n\nINI Setting: IgnoreFellowship" },
 	{ "IgnoreRaid", "Ignore Raid Members", szSayINISection, &bIgnoreRaid, "Toggle to ignore your raid from triggering the say alert.\n\nINI Setting: IgnoreRaid" },
+	{ "FilterNPC", "Filter NPCs", szSayINISection, &bFilterNPC, "Toggle to filter non-GM NPCs using the PC Say channel from triggering the say alert.\n\nINI Setting: FilterNPC" },
 };
 
 void SayImGuiSettingsPanel()
