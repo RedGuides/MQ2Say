@@ -390,7 +390,7 @@ void UpdateszSayINISection()
 {
 	if (bSaveByChar && pLocalPlayer)
 	{
-		sprintf_s(szSayINISection, "%s.%s", EQADDR_SERVERNAME, pLocalPlayer->Name);
+		sprintf_s(szSayINISection, "%s.%s", GetServerShortName(), pLocalPlayer->Name);
 	}
 	else
 	{
