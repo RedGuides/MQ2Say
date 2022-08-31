@@ -37,6 +37,7 @@ bool bIgnoreFellowship = false;
 bool bIgnoreRaid = false;
 bool bFilterNPC = false;
 bool bAlertPerSpeaker = true;
+bool bUseSayWnd = true;
 std::string strLastSay = { };
 std::string strLastSpeaker = { };
 
@@ -310,25 +311,33 @@ std::string FormatSay(const std::string& strSenderIn, const std::string& strText
 
 void WriteSay(const std::string& SaySender, const std::string& SayText)
 {
-	if (MQSayWnd == nullptr || !bSayStatus)
+	if (!bSayStatus || (MQSayWnd == nullptr && bUseSayWnd))
 	{
 		return;
 	}
 	strLastSpeaker = SaySender;
 	strLastSay = SayText;
 	std::string Line = FormatSay(SaySender, SayText);
-	MQSayWnd->SetVisible(true);
-	char* szProcessed = new char[MAX_STRING];
+	if (bUseSayWnd)
+	{
+		MQSayWnd->SetVisible(true);
+		char* szProcessed = new char[MAX_STRING];
 
-	int pos = MQToSTML(Line.c_str(), szProcessed, MAX_STRING - 4);
+		int pos = MQToSTML(Line.c_str(), szProcessed, MAX_STRING - 4);
 
-	CXStr text = szProcessed;
-	text.append("<br>");
+		CXStr text = szProcessed;
+		text.append("<br>");
 
-	ConvertItemTags(text);
-	sPendingSay.push_back(text);
+		ConvertItemTags(text);
+		sPendingSay.push_back(text);
 
-	delete[] szProcessed;
+		delete[] szProcessed;
+	}
+	else
+	{
+		Line = PLUGIN_MSG "" + Line;
+		WriteChatf(Line.c_str());
+	}
 }
 
 void DoAlerts(const std::string& Line)
@@ -504,7 +513,7 @@ void SaveSayToINI(CSidlScreenWnd* pWindow)
 
 void CreateSayWnd()
 {
-	if (MQSayWnd)
+	if (MQSayWnd || !bUseSayWnd)
 	{
 		return;
 	}
@@ -527,6 +536,15 @@ void DestroySayWnd()
 		MQSayWnd = nullptr;
 
 		iOldVScrollPos = 0;
+	}
+}
+
+void ManageSayWndVisibilityState()
+{
+	CreateSayWnd();
+	if (!bUseSayWnd)
+	{
+		DestroySayWnd();
 	}
 }
 
@@ -607,14 +625,14 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 	}
 	else if (!_stricmp(Arg, "on"))
 	{
-		CreateSayWnd();
+		ManageSayWndVisibilityState();
 		bSayStatus = true;
 		WriteChatf(PLUGIN_MSG "\awSay Status is:\ax \agOn.");
 		WritePrivateProfileString("Settings", "SayStatus", bSayStatus ? "on" : "off", INIFileName);
 	}
 	else if (!_stricmp(Arg, "off"))
 	{
-		DestroySayWnd();
+		ManageSayWndVisibilityState();
 		bSayStatus = false;
 		WriteChatf(PLUGIN_MSG "\awSay Status is:\ax \arOff.");
 		WritePrivateProfileString("Settings", "SayStatus", bSayStatus ? "on" : "off", INIFileName);
@@ -760,10 +778,17 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		GetArg(Arg, Line, 2);
 		bSayTimestamps = AdjustBoolSetting("timestamps", szSayINISection, "Timestamps", Arg, bSayTimestamps);
 	}
+	else if (!_stricmp(Arg, "usewindow"))
+	{
+		GetArg(Arg, Line, 2);
+		bUseSayWnd = AdjustBoolSetting("usewindow", szSayINISection, "UseWindow", Arg, bUseSayWnd);
+		ManageSayWndVisibilityState();
+	}
 	else if (!_stricmp(Arg, "autoscroll"))
 	{
 		GetArg(Arg, Line, 2);
 		bAutoScroll = AdjustBoolSetting("autoscroll", szSayINISection, "AutoScroll", Arg, bAutoScroll);
+
 	}
 	else if (!_stricmp(Arg, "SaveByChar"))
 	{
@@ -783,6 +808,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		ShowSetting(bIgnoreFellowship, "Ignore Fellowship");
 		ShowSetting(bIgnoreRaid,       "Ignore Raid");
 		ShowSetting(bFilterNPC,        "Filter NPC");
+		ShowSetting(bUseSayWnd,        "Say Window");
 	}
 	else if (!_stricmp(Arg, "ui") || !_stricmp(Arg, "gui")) {
 		EzCommand("/mqsettings plugins/say");
@@ -796,24 +822,20 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 PLUGIN_API void OnReloadUI()
 {
 	// redraw window when you load/reload UI
-	CreateSayWnd();
+	ManageSayWndVisibilityState();
 }
 
 PLUGIN_API void OnCleanUI()
 {
 	// destroy SayWnd before server select & while reloading UI
-	DestroySayWnd();
+	ManageSayWndVisibilityState();
 }
 
 PLUGIN_API void SetGameState(int GameState)
 {
-	if (GameState == GAMESTATE_INGAME && !MQSayWnd)
+	if (GameState == GAMESTATE_INGAME && bSayStatus && !MQSayWnd)
 	{
-		// we entered the game, set up shop
-		if (bSayStatus)
-		{
-			CreateSayWnd();
-		}
+		ManageSayWndVisibilityState();
 	}
 }
 
@@ -904,7 +926,7 @@ public:
 	{
 		Title = 1,
 		LastSay,
-		LastSpeaker
+		LastSpeaker,
 	};
 
 	MQ2SayType() :MQ2Type("saywnd")
@@ -978,16 +1000,18 @@ struct PluginCheckbox {
 };
 
 static const PluginCheckbox checkboxes[] = {
-	{ "SayStatus", "Plugin On / Off", "Settings", &bSayStatus, "Toggle the plugin On / Off.\n\nINI Setting: SayStatus" },
-	{ "SayDebug", "Plugin Debbuging", "Settings", &bSayDebug, "Toggle plugin debugging.\n\nINI Setting: SayDebug" },
-	{ "AutoScroll", "AutoScroll Chat", "Settings", &bAutoScroll, "Toggle autoScrolling of the chat window.\n\nINI Setting: AutoScroll" },
+	{ "SayStatus",  "Plugin On / Off",  "Settings", &bSayStatus,  "Toggle the plugin On / Off.\n\nINI Setting: SayStatus" },
+	{ "SayDebug",   "Plugin Debbuging", "Settings", &bSayDebug,   "Toggle plugin debugging.\n\nINI Setting: SayDebug" },
+	{ "AutoScroll", "AutoScroll Chat",  "Settings", &bAutoScroll, "Toggle autoScrolling of the chat window.\n\nINI Setting: AutoScroll" },
+
 	{ "TimeStamps", "Display Timestamps", szSayINISection, &bSayTimestamps, "Toggle to display timestamps.\n\nINI Setting: TimeStamps" },
+	//{ "UseWindow",  "Say Window",         szSayINISection, &bUseSayWnd,     "Use a dedicated say window.\n\nINI Setting: UseWindow" },
 };
 
 static const PluginCheckbox ignores[] = {
 	{ "IgnoreGroup", "Ignore Group Members", szSayINISection, &bIgnoreGroup, "Toggle to ignore your group from triggering the say alert.\n\nINI Setting: IgnoreGroup" },
-	{ "IgnoreGuild", "Ignore Guild Members", szSayINISection, &bIgnoreGuild,  "Toggle to ignore your guild from triggering the say alert.\n\nINI Setting: IgnoreGuild" },
-	{ "IgnoreFellowship", "Ignore Fellowship Members", szSayINISection, &bIgnoreFellowship,  "Toggle to ignore your fellowship from triggering the say alert.\n\nINI Setting: IgnoreFellowship" },
+	{ "IgnoreGuild", "Ignore Guild Members", szSayINISection, &bIgnoreGuild, "Toggle to ignore your guild from triggering the say alert.\n\nINI Setting: IgnoreGuild" },
+	{ "IgnoreFellowship", "Ignore Fellowship Members", szSayINISection, &bIgnoreFellowship, "Toggle to ignore your fellowship from triggering the say alert.\n\nINI Setting: IgnoreFellowship" },
 	{ "IgnoreRaid", "Ignore Raid Members", szSayINISection, &bIgnoreRaid, "Toggle to ignore your raid from triggering the say alert.\n\nINI Setting: IgnoreRaid" },
 	{ "FilterNPC", "Filter NPCs", szSayINISection, &bFilterNPC, "Toggle to filter non-GM NPCs using the PC Say channel from triggering the say alert.\n\nINI Setting: FilterNPC" },
 };
@@ -1005,7 +1029,16 @@ void SayImGuiSettingsPanel()
 		mq::imgui::HelpMarker(cb.helptext);
 	}
 
-	// We need to handle SaveByChar individicually so we reload so the szSayINISection is updated
+	// We need to handle UseSayWnd invidivually so we can call ManageSayWndVisibilityState
+	if (ImGui::Checkbox("Say Window", &bUseSayWnd))
+	{
+		WritePrivateProfileBool(szSayINISection, "UseWindow", bUseSayWnd, INIFileName);
+		ManageSayWndVisibilityState();
+	}
+	ImGui::SameLine();
+	mq::imgui::HelpMarker("Toggle to use a dedicated Say Window.\n\nINI Setting: UseWindow");
+
+	// We need to handle SaveByChar individually so we reload so the szSayINISection is updated
 	if (ImGui::Checkbox("Per Character Settings", &bSaveByChar))
 	{
 		WritePrivateProfileBool("Settings", "SaveByChar", bSaveByChar, INIFileName);
