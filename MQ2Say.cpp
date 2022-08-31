@@ -380,12 +380,13 @@ void DoAlerts(const std::string& Line)
 
 void LoadSaySettings()
 {
-	bSayStatus = GetPrivateProfileBool("Settings", "SayStatus", bSayStatus, INIFileName);
-	bSayDebug = GetPrivateProfileBool("Settings", "SayDebug", bSayDebug, INIFileName);
-	bAutoScroll = GetPrivateProfileBool("Settings", "AutoScroll", bAutoScroll, INIFileName);
-	bSaveByChar = GetPrivateProfileBool("Settings", "SaveByChar", bSaveByChar, INIFileName);
+	bSayStatus = GetPrivateProfileBool("Settings",       "SayStatus",       bSayStatus,       INIFileName);
+	bSayDebug = GetPrivateProfileBool("Settings",        "SayDebug",        bSayDebug,        INIFileName);
+	bAutoScroll = GetPrivateProfileBool("Settings",      "AutoScroll",      bAutoScroll,      INIFileName);
+	bSaveByChar = GetPrivateProfileBool("Settings",      "SaveByChar",      bSaveByChar,      INIFileName);
 	bAlertPerSpeaker = GetPrivateProfileBool("Settings", "AlertPerSpeaker", bAlertPerSpeaker, INIFileName);
-	intIgnoreDelay = GetPrivateProfileInt("Settings", "IgnoreDelay", intIgnoreDelay, INIFileName);
+
+	intIgnoreDelay = GetPrivateProfileInt("Settings",    "IgnoreDelay",     intIgnoreDelay,   INIFileName);
 }
 
 void UpdateszSayINISection()
@@ -408,39 +409,42 @@ void LoadSayFromINI(CSidlScreenWnd* pWindow)
 
 	UpdateszSayINISection();
 
-	bIgnoreGroup = GetPrivateProfileBool(szSayINISection, "IgnoreGroup", bIgnoreGroup, INIFileName);
-	bIgnoreGuild = GetPrivateProfileBool(szSayINISection, "IgnoreGuild", bIgnoreGuild, INIFileName);
+	bIgnoreGroup = GetPrivateProfileBool(szSayINISection,      "IgnoreGroup",      bIgnoreGroup,      INIFileName);
+	bIgnoreGuild = GetPrivateProfileBool(szSayINISection,      "IgnoreGuild",      bIgnoreGuild,      INIFileName);
 	bIgnoreFellowship = GetPrivateProfileBool(szSayINISection, "IgnoreFellowship", bIgnoreFellowship, INIFileName);
-	bIgnoreRaid = GetPrivateProfileBool(szSayINISection, "IgnoreRaid", bIgnoreRaid, INIFileName);
-	bFilterNPC = GetPrivateProfileBool(szSayINISection, "FilterNPC", bFilterNPC, INIFileName);
+	bIgnoreRaid = GetPrivateProfileBool(szSayINISection,       "IgnoreRaid",       bIgnoreRaid,       INIFileName);
+	bFilterNPC = GetPrivateProfileBool(szSayINISection,        "FilterNPC",        bFilterNPC,        INIFileName);
+	bSayAlerts = GetPrivateProfileBool(szSayINISection,        "Alerts",           bSayAlerts,        INIFileName);
 
-	bSayAlerts = GetPrivateProfileBool(szSayINISection, "Alerts", bSayAlerts, INIFileName);
 	const int i = GetPrivateProfileString(szSayINISection, "AlertCommand", "/multiline ; /beep ; /timed 1 /beep ; /timed 2 /beep", strSayAlertCommand, MAX_STRING, INIFileName);
 	if (i == 0)
 	{
 		strcpy_s(strSayAlertCommand, "/multiline ; /beep ; /timed 1 /beep ; /timed 2 /beep");
 	}
 	bSayTimestamps = GetPrivateProfileBool(szSayINISection, "Timestamps", bSayTimestamps, INIFileName);
+	bUseSayWnd = GetPrivateProfileBool(szSayINISection,     "UseWindow",  bUseSayWnd,     INIFileName);
 
 	//The settings for default location are also in the reset command.
-	pWindow->SetLocation({ (LONG)GetPrivateProfileInt(szSayINISection,"SayLeft", 300,INIFileName),
-		(LONG)GetPrivateProfileInt(szSayINISection,"SayTop",       10,INIFileName),
-		(LONG)GetPrivateProfileInt(szSayINISection,"SayRight",    600,INIFileName),
-		(LONG)GetPrivateProfileInt(szSayINISection,"SayBottom",   210,INIFileName) });
+	pWindow->SetLocation({
+		GetPrivateProfileInt(szSayINISection,"SayLeft",   300, INIFileName),
+		GetPrivateProfileInt(szSayINISection,"SayTop",    10,  INIFileName),
+		GetPrivateProfileInt(szSayINISection,"SayRight",  600, INIFileName),
+		GetPrivateProfileInt(szSayINISection,"SayBottom", 210, INIFileName)
+	});
 
-	pWindow->SetLocked((GetPrivateProfileInt(szSayINISection, "Locked", 0, INIFileName) ? true : false));
-	pWindow->SetFades((GetPrivateProfileInt(szSayINISection, "Fades", 0, INIFileName) ? true : false));
-	pWindow->SetFadeDelay(GetPrivateProfileInt(szSayINISection, "Delay", 2000, INIFileName));
-	pWindow->SetFadeDuration(GetPrivateProfileInt(szSayINISection, "Duration", 500, INIFileName));
-	pWindow->SetAlpha((BYTE)GetPrivateProfileInt(szSayINISection, "Alpha", 255, INIFileName));
-	pWindow->SetFadeToAlpha((BYTE)GetPrivateProfileInt(szSayINISection, "FadeToAlpha", 255, INIFileName));
-	pWindow->SetBGType(GetPrivateProfileInt(szSayINISection, "BGType", 1, INIFileName));
+	pWindow->SetLocked((GetPrivateProfileInt(szSayINISection,           "Locked",      0,    INIFileName) ? true : false));
+	pWindow->SetFades((GetPrivateProfileInt(szSayINISection,            "Fades",       0,    INIFileName) ? true : false));
+	pWindow->SetFadeDelay(GetPrivateProfileInt(szSayINISection,         "Delay",       2000, INIFileName));
+	pWindow->SetFadeDuration(GetPrivateProfileInt(szSayINISection,      "Duration",    500,  INIFileName));
+	pWindow->SetAlpha((BYTE)GetPrivateProfileInt(szSayINISection,       "Alpha",       255,  INIFileName));
+	pWindow->SetFadeToAlpha((BYTE)GetPrivateProfileInt(szSayINISection, "FadeToAlpha", 255,  INIFileName));
+	pWindow->SetBGType(GetPrivateProfileInt(szSayINISection,            "BGType",      1,    INIFileName));
 	ARGBCOLOR col = { 0 };
 	col.ARGB = pWindow->GetBGColor();
 	col.A = GetPrivateProfileInt(szSayINISection, "BGTint.alpha", 255, INIFileName);
-	col.R = GetPrivateProfileInt(szSayINISection, "BGTint.red", 0, INIFileName);
-	col.G = GetPrivateProfileInt(szSayINISection, "BGTint.green", 0, INIFileName);
-	col.B = GetPrivateProfileInt(szSayINISection, "BGTint.blue", 0, INIFileName);
+	col.R = GetPrivateProfileInt(szSayINISection, "BGTint.red",   0,   INIFileName);
+	col.G = GetPrivateProfileInt(szSayINISection, "BGTint.green", 0,   INIFileName);
+	col.B = GetPrivateProfileInt(szSayINISection, "BGTint.blue",  0,   INIFileName);
 	pWindow->SetBGColor(col.ARGB);
 	MQSayWnd->SetSayFont(GetPrivateProfileInt(szSayINISection, "FontSize", 4, INIFileName));
 	GetPrivateProfileString(szSayINISection, "WindowTitle", "Say Detection", szTemp, MAX_STRING, INIFileName);
@@ -449,49 +453,53 @@ void LoadSayFromINI(CSidlScreenWnd* pWindow)
 
 void SaveSayToINI(CSidlScreenWnd* pWindow)
 {
-	WritePrivateProfileBool("Settings", "SayStatus", bSayStatus, INIFileName);
-	WritePrivateProfileBool("Settings", "SayDebug", bSayDebug, INIFileName);
-	WritePrivateProfileBool("Settings", "AutoScroll", bAutoScroll, INIFileName);
-	WritePrivateProfileBool("Settings", "SaveByChar", bSaveByChar, INIFileName);
+	WritePrivateProfileBool("Settings", "SayStatus",       bSayStatus,       INIFileName);
+	WritePrivateProfileBool("Settings", "SayDebug",        bSayDebug,        INIFileName);
+	WritePrivateProfileBool("Settings", "AutoScroll",      bAutoScroll,      INIFileName);
+	WritePrivateProfileBool("Settings", "SaveByChar",      bSaveByChar,      INIFileName);
 	WritePrivateProfileBool("Settings", "AlertPerSpeaker", bAlertPerSpeaker, INIFileName);
-	WritePrivateProfileInt("Settings", "IgnoreDelay", intIgnoreDelay, INIFileName);
-	WritePrivateProfileBool(szSayINISection, "IgnoreGroup", bIgnoreGroup, INIFileName);
-	WritePrivateProfileBool(szSayINISection, "IgnoreGuild", bIgnoreGuild, INIFileName);
+
+	WritePrivateProfileInt("Settings",  "IgnoreDelay", intIgnoreDelay, INIFileName);
+
+	WritePrivateProfileBool(szSayINISection, "IgnoreGroup",      bIgnoreGroup,      INIFileName);
+	WritePrivateProfileBool(szSayINISection, "IgnoreGuild",      bIgnoreGuild,      INIFileName);
 	WritePrivateProfileBool(szSayINISection, "IgnoreFellowship", bIgnoreFellowship, INIFileName);
-	WritePrivateProfileBool(szSayINISection, "IgnoreRaid", bIgnoreRaid, INIFileName);
-	WritePrivateProfileBool(szSayINISection, "FilterNPC", bFilterNPC, INIFileName);
-	WritePrivateProfileBool(szSayINISection, "Alerts", bSayAlerts, INIFileName);
-	WritePrivateProfileString(szSayINISection, "AlertCommand", strSayAlertCommand, INIFileName);
-	WritePrivateProfileBool(szSayINISection, "Timestamps", bSayTimestamps, INIFileName);
-	WritePrivateProfileString(szSayINISection, "WindowTitle", pWindow->GetWindowText().c_str(), INIFileName);
+	WritePrivateProfileBool(szSayINISection, "IgnoreRaid",       bIgnoreRaid,       INIFileName);
+	WritePrivateProfileBool(szSayINISection, "FilterNPC",        bFilterNPC,        INIFileName);
+	WritePrivateProfileBool(szSayINISection, "Alerts",           bSayAlerts,        INIFileName);
+	WritePrivateProfileBool(szSayINISection, "Timestamps",       bSayTimestamps,    INIFileName);
+	WritePrivateProfileBool(szSayINISection, "UseWindow",        bUseSayWnd,        INIFileName);
+
+	WritePrivateProfileString(szSayINISection, "AlertCommand", strSayAlertCommand,               INIFileName);
+	WritePrivateProfileString(szSayINISection, "WindowTitle",  pWindow->GetWindowText().c_str(), INIFileName);
 	if (pWindow->IsMinimized())
 	{
-		WritePrivateProfileString(szSayINISection, "SayTop", std::to_string(pWindow->GetOldLocation().top), INIFileName);
+		WritePrivateProfileString(szSayINISection, "SayTop",    std::to_string(pWindow->GetOldLocation().top),    INIFileName);
 		WritePrivateProfileString(szSayINISection, "SayBottom", std::to_string(pWindow->GetOldLocation().bottom), INIFileName);
-		WritePrivateProfileString(szSayINISection, "SayLeft", std::to_string(pWindow->GetOldLocation().left), INIFileName);
-		WritePrivateProfileString(szSayINISection, "SayRight", std::to_string(pWindow->GetOldLocation().right), INIFileName);
+		WritePrivateProfileString(szSayINISection, "SayLeft",   std::to_string(pWindow->GetOldLocation().left),   INIFileName);
+		WritePrivateProfileString(szSayINISection, "SayRight",  std::to_string(pWindow->GetOldLocation().right),  INIFileName);
 	}
 	else
 	{
-		WritePrivateProfileString(szSayINISection, "SayTop", std::to_string(pWindow->GetLocation().top), INIFileName);
+		WritePrivateProfileString(szSayINISection, "SayTop",    std::to_string(pWindow->GetLocation().top),    INIFileName);
 		WritePrivateProfileString(szSayINISection, "SayBottom", std::to_string(pWindow->GetLocation().bottom), INIFileName);
-		WritePrivateProfileString(szSayINISection, "SayLeft", std::to_string(pWindow->GetLocation().left), INIFileName);
-		WritePrivateProfileString(szSayINISection, "SayRight", std::to_string(pWindow->GetLocation().right), INIFileName);
+		WritePrivateProfileString(szSayINISection, "SayLeft",   std::to_string(pWindow->GetLocation().left),   INIFileName);
+		WritePrivateProfileString(szSayINISection, "SayRight",  std::to_string(pWindow->GetLocation().right),  INIFileName);
 	}
-	WritePrivateProfileString(szSayINISection, "Locked", std::to_string(pWindow->IsLocked()), INIFileName);
-	WritePrivateProfileString(szSayINISection, "Fades", std::to_string(pWindow->GetFades()), INIFileName);
-	WritePrivateProfileString(szSayINISection, "Delay", std::to_string(pWindow->GetFadeDelay()), INIFileName);
-	WritePrivateProfileString(szSayINISection, "Duration", std::to_string(pWindow->GetFadeDuration()), INIFileName);
-	WritePrivateProfileString(szSayINISection, "Alpha", std::to_string(pWindow->GetAlpha()), INIFileName);
-	WritePrivateProfileString(szSayINISection, "FadeToAlpha", std::to_string(pWindow->GetFadeToAlpha()), INIFileName);
+	WritePrivateProfileString(szSayINISection, "Locked",      std::to_string(pWindow->IsLocked()),        INIFileName);
+	WritePrivateProfileString(szSayINISection, "Fades",       std::to_string(pWindow->GetFades()),        INIFileName);
+	WritePrivateProfileString(szSayINISection, "Delay",       std::to_string(pWindow->GetFadeDelay()),    INIFileName);
+	WritePrivateProfileString(szSayINISection, "Duration",    std::to_string(pWindow->GetFadeDuration()), INIFileName);
+	WritePrivateProfileString(szSayINISection, "Alpha",       std::to_string(pWindow->GetAlpha()),        INIFileName);
+	WritePrivateProfileString(szSayINISection, "FadeToAlpha", std::to_string(pWindow->GetFadeToAlpha()),  INIFileName);
 	ARGBCOLOR col = { 0 };
 	col.ARGB = pWindow->GetBGColor();
-	WritePrivateProfileString(szSayINISection, "BGType", std::to_string(pWindow->GetBGType()), INIFileName);
-	WritePrivateProfileString(szSayINISection, "BGTint.alpha", std::to_string(col.A), INIFileName);
-	WritePrivateProfileString(szSayINISection, "BGTint.red", std::to_string(col.R), INIFileName);
-	WritePrivateProfileString(szSayINISection, "BGTint.green", std::to_string(col.G), INIFileName);
-	WritePrivateProfileString(szSayINISection, "BGTint.blue", std::to_string(col.B), INIFileName);
-	WritePrivateProfileString(szSayINISection, "FontSize", std::to_string(MQSayWnd->FontSize), INIFileName);
+	WritePrivateProfileString(szSayINISection, "BGType",       std::to_string(pWindow->GetBGType()), INIFileName);
+	WritePrivateProfileString(szSayINISection, "BGTint.alpha", std::to_string(col.A),                INIFileName);
+	WritePrivateProfileString(szSayINISection, "BGTint.red",   std::to_string(col.R),                INIFileName);
+	WritePrivateProfileString(szSayINISection, "BGTint.green", std::to_string(col.G),                INIFileName);
+	WritePrivateProfileString(szSayINISection, "BGTint.blue",  std::to_string(col.B),                INIFileName);
+	WritePrivateProfileString(szSayINISection, "FontSize",     std::to_string(MQSayWnd->FontSize),   INIFileName);
 }
 
 void CreateSayWnd()
@@ -764,17 +772,17 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		UpdateszSayINISection();
 	}
 	else if (!_stricmp(Arg, "Settings")) {
-		ShowSetting(bSayStatus, "Plugin");
-		ShowSetting(bSayDebug, "Debug");
-		ShowSetting(bAutoScroll, "Autoscroll");
-		ShowSetting(bSaveByChar, "SaveByChar");
-		ShowSetting(bSayAlerts, "Alerts");
-		ShowSetting(bSayTimestamps, "Timestamps");
-		ShowSetting(bIgnoreGroup, "Ignore Group");
-		ShowSetting(bIgnoreGuild, "Ignore Guild");
+		ShowSetting(bSayStatus,        "Plugin");
+		ShowSetting(bSayDebug,         "Debug");
+		ShowSetting(bAutoScroll,       "Autoscroll");
+		ShowSetting(bSaveByChar,       "SaveByChar");
+		ShowSetting(bSayAlerts,        "Alerts");
+		ShowSetting(bSayTimestamps,    "Timestamps");
+		ShowSetting(bIgnoreGroup,      "Ignore Group");
+		ShowSetting(bIgnoreGuild,      "Ignore Guild");
 		ShowSetting(bIgnoreFellowship, "Ignore Fellowship");
-		ShowSetting(bIgnoreRaid, "Ignore Raid");
-		ShowSetting(bFilterNPC, "Filter NPC");
+		ShowSetting(bIgnoreRaid,       "Ignore Raid");
+		ShowSetting(bFilterNPC,        "Filter NPC");
 	}
 	else if (!_stricmp(Arg, "ui") || !_stricmp(Arg, "gui")) {
 		EzCommand("/mqsettings plugins/say");
