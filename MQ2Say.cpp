@@ -10,7 +10,9 @@
 #include <mq/imgui/ImGuiUtils.h>
 
 PreSetup("MQ2Say");
-PLUGIN_VERSION(1.3);
+PLUGIN_VERSION(1.4);
+
+#define PLUGIN_MSG "[\arMQ2Say\ax] "
 
 constexpr int CMD_HIST_MAX = 50;
 constexpr int MAX_CHAT_SIZE = 700;
@@ -246,11 +248,11 @@ bool IsNPC(const std::string& strCheckName)
 	{
 		if (spawn == nullptr)
 		{
-			WriteChatf("[\arMQ2Say\ax] \ayDebug\ax: IsNPC could not find spawn.");
+			WriteChatf(PLUGIN_MSG, "\ayDebug\ax: IsNPC could not find spawn.");
 		}
 		else
 		{
-			WriteChatf("[\arMQ2Say\ax] \ayDebug\ax: IsNPC found %s", spawn->Name);
+			WriteChatf(PLUGIN_MSG, "\ayDebug\ax: IsNPC found %s", spawn->Name);
 		}
 	}
 	// Don't actually need the nullptr check here since IsGM checks it, but putting it in case that changes
@@ -345,7 +347,7 @@ void DoAlerts(const std::string& Line)
 			{
 				if (bSayDebug)
 				{
-					WriteChatf("[\arMQ2Say\ax] \ayDebug\ax: Skipping output due to ignore settings.");
+					WriteChatf(PLUGIN_MSG, "\ayDebug\ax: Skipping output due to ignore settings.");
 				}
 			}
 			else
@@ -355,7 +357,7 @@ void DoAlerts(const std::string& Line)
 				{
 					if (strSayAlertCommand[0] == '\0')
 					{
-						WriteChatf("[\arMQ2Say\ax] \arError\ax: \a-wSay Detected, Alerts are turned on, but AlertCommand is not set in the INI\ax");
+						WriteChatf(PLUGIN_MSG, "\arError\ax: \a-wSay Detected, Alerts are turned on, but AlertCommand is not set in the INI\ax");
 					}
 					else if (strSayAlertCommand[0] == '/')
 					{
@@ -574,12 +576,12 @@ bool AdjustBoolSetting(const char* SettingCmd, const char* INIsection, const cha
 		WritePrivateProfileString(INIsection, INIkey, currentValue ? "on" : "off", INIFileName);
 	}
 
-	WriteChatf("[\arMQ2Say\ax] \aw%s is: %s", INIkey, (currentValue ? "\agOn" : "\arOff"));
+	WriteChatf(PLUGIN_MSG, "\aw%s is: %s", INIkey, (currentValue ? "\agOn" : "\arOff"));
 	return currentValue;
 }
 
 void ShowSetting(bool bSetting, char* szSettingName) {
-	WriteChatf("[\arMQ2Say\ax] \ap%s\aw is currently %s", szSettingName, (bSetting ? "\agOn" : "\arOff"));
+	WriteChatf(PLUGIN_MSG, "\ap%s\aw is currently %s", szSettingName, (bSetting ? "\agOn" : "\arOff"));
 }
 
 void MQSay(SPAWNINFO* pChar, char* Line)
@@ -589,7 +591,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 	//Display Command Syntax
 	if (Arg[0] == '\0' || !_stricmp(Arg, "help"))
 	{
-		WriteChatf("[\arMQ2Say\ax] \awPlugin is:\ax %s", bSayStatus ? "\agOn\ax" : "\arOff\ax");
+		WriteChatf(PLUGIN_MSG, "\awPlugin is:\ax %s", bSayStatus ? "\agOn\ax" : "\arOff\ax");
 		WriteChatf("Usage: /mqsay <on/off>");
 		WriteChatf("/mqsay [Option Name] <value/on/off>");
 		WriteChatf("Valid options are Reset, Clear, Alerts, AlertPerSpeaker, Autoscroll, IgnoreDelay, Fellowship, Group, Guild, Raid, FilterNPC, Reload, Timestamps, Title, Settings");
@@ -599,20 +601,20 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 	{
 		CreateSayWnd();
 		bSayStatus = true;
-		WriteChatf("[\arMQ2Say\ax] \awSay Status is:\ax \agOn.");
+		WriteChatf(PLUGIN_MSG, "\awSay Status is:\ax \agOn.");
 		WritePrivateProfileString("Settings", "SayStatus", bSayStatus ? "on" : "off", INIFileName);
 	}
 	else if (!_stricmp(Arg, "off"))
 	{
 		DestroySayWnd();
 		bSayStatus = false;
-		WriteChatf("[\arMQ2Say\ax] \awSay Status is:\ax \arOff.");
+		WriteChatf(PLUGIN_MSG, "\awSay Status is:\ax \arOff.");
 		WritePrivateProfileString("Settings", "SayStatus", bSayStatus ? "on" : "off", INIFileName);
 	}
 	else if (!_stricmp(Arg, "reload"))
 	{
 		LoadSayFromINI(MQSayWnd);
-		WriteChatf("[\arMQ2Say\ax] \a-wPlugin Settings Reloaded.\ax");
+		WriteChatf(PLUGIN_MSG, "\a-wPlugin Settings Reloaded.\ax");
 	}
 	else if (!_stricmp(Line, "reset"))
 	{
@@ -627,7 +629,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		}
 		else
 		{
-			WriteChatf("[\arMQ2Say\ax] \awReset is only valid when Say Window is visible (\ag/mqsay on\ax).\ax");
+			WriteChatf(PLUGIN_MSG, "\awReset is only valid when Say Window is visible (\ag/mqsay on\ax).\ax");
 		}
 	}
 	else if (!_stricmp(Line, "clear"))
@@ -638,7 +640,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		}
 		else
 		{
-			WriteChatf("[\arMQ2Say\ax] \awClear is only valid when Say Window is visible (\ag/mqsay on\ax).\ax");
+			WriteChatf(PLUGIN_MSG, "\awClear is only valid when Say Window is visible (\ag/mqsay on\ax).\ax");
 		}
 	}
 	else if (!_stricmp(Arg, "debug"))
@@ -653,11 +655,11 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		{
 			if (MQSayWnd != nullptr)
 			{
-				WriteChatf("[\arMQ2Say\ax] \awThe Window title is currently:\ax \ar%s\ax", MQSayWnd->GetWindowText().c_str());
+				WriteChatf(PLUGIN_MSG, "\awThe Window title is currently:\ax \ar%s\ax", MQSayWnd->GetWindowText().c_str());
 			}
 			else
 			{
-				WriteChatf("[\arMQ2Say\ax] \arSay window not found, cannot retrieve Title.");
+				WriteChatf(PLUGIN_MSG, "\arSay window not found, cannot retrieve Title.");
 			}
 		}
 		else
@@ -676,7 +678,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		GetArg(Arg, Line, 2);
 		if (Arg[0] == '\0')
 		{
-			WriteChatf("[\arMQ2Say\ax] \awThe font size is currently:\ax %s", MQSayWnd->FontSize);
+			WriteChatf(PLUGIN_MSG, "\awThe font size is currently:\ax %s", MQSayWnd->FontSize);
 		}
 		else if (const int fontSize = GetIntFromString(Arg, 0))
 		{
@@ -693,7 +695,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		GetArg(Arg, Line, 2);
 		if (Arg[0] == '\0')
 		{
-			WriteChatf("[\arMQ2Say\ax] \awThe Ignore Delay is currently:\ax %i", intIgnoreDelay);
+			WriteChatf(PLUGIN_MSG, "\awThe Ignore Delay is currently:\ax %i", intIgnoreDelay);
 		}
 		else
 		{
@@ -701,7 +703,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 			if (ignoreDelay >= 0)
 			{
 				intIgnoreDelay = ignoreDelay;
-				WriteChatf("[\arMQ2Say\ax] \awThe Ignore Delay is now set to:\ax %i", intIgnoreDelay);
+				WriteChatf(PLUGIN_MSG, "\awThe Ignore Delay is now set to:\ax %i", intIgnoreDelay);
 				WritePrivateProfileString("Settings", "IgnoreDelay", std::to_string(intIgnoreDelay), INIFileName);
 			}
 			else
@@ -779,7 +781,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 	}
 	else
 	{
-		WriteChatf("[\arMQ2Say\ax] %s was not a valid option. Use \ag/mqsay help\ax to show options.", Arg);
+		WriteChatf(PLUGIN_MSG, "%s was not a valid option. Use \ag/mqsay help\ax to show options.", Arg);
 	}
 }
 
@@ -1059,11 +1061,11 @@ PLUGIN_API void InitializePlugin()
 	LoadSaySettings();
 	if (!bSayStatus)
 	{
-		WriteChatf("[\arMQ2Say\ax] \a-wPlugin Loaded successfully. Window not displayed due to the plugin being turned off in the ini. Type /mqsay on to turn it back on.\ax");
+		WriteChatf(PLUGIN_MSG, "\a-wPlugin Loaded successfully. Window not displayed due to the plugin being turned off in the ini. Type /mqsay on to turn it back on.\ax");
 	}
 	else
 	{
-		WriteChatf("[\arMQ2Say\ax] \a-wPlugin Loaded successfully.\ax");
+		WriteChatf(PLUGIN_MSG, "\a-wPlugin Loaded successfully.\ax");
 	}
 
 	AddSettingsPanel("plugins/Say", SayImGuiSettingsPanel);
