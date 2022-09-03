@@ -10,7 +10,9 @@
 #include <mq/imgui/ImGuiUtils.h>
 
 PreSetup("MQ2Say");
-PLUGIN_VERSION(1.3);
+PLUGIN_VERSION(1.4);
+
+#define PLUGIN_MSG "[\arMQ2Say\ax] "
 
 constexpr int CMD_HIST_MAX = 50;
 constexpr int MAX_CHAT_SIZE = 700;
@@ -35,6 +37,7 @@ bool bIgnoreFellowship = false;
 bool bIgnoreRaid = false;
 bool bFilterNPC = false;
 bool bAlertPerSpeaker = true;
+bool bUseSayWnd = true;
 std::string strLastSay = { };
 std::string strLastSpeaker = { };
 
@@ -246,11 +249,11 @@ bool IsNPC(const std::string& strCheckName)
 	{
 		if (spawn == nullptr)
 		{
-			WriteChatf("[\arMQ2Say\ax] \ayDebug\ax: IsNPC could not find spawn.");
+			WriteChatf(PLUGIN_MSG "\ayDebug\ax: IsNPC could not find spawn.");
 		}
 		else
 		{
-			WriteChatf("[\arMQ2Say\ax] \ayDebug\ax: IsNPC found %s", spawn->Name);
+			WriteChatf(PLUGIN_MSG "\ayDebug\ax: IsNPC found %s", spawn->Name);
 		}
 	}
 	// Don't actually need the nullptr check here since IsGM checks it, but putting it in case that changes
@@ -308,25 +311,33 @@ std::string FormatSay(const std::string& strSenderIn, const std::string& strText
 
 void WriteSay(const std::string& SaySender, const std::string& SayText)
 {
-	if (MQSayWnd == nullptr || !bSayStatus)
+	if (!bSayStatus || (MQSayWnd == nullptr && bUseSayWnd))
 	{
 		return;
 	}
 	strLastSpeaker = SaySender;
 	strLastSay = SayText;
 	std::string Line = FormatSay(SaySender, SayText);
-	MQSayWnd->SetVisible(true);
-	char* szProcessed = new char[MAX_STRING];
+	if (bUseSayWnd)
+	{
+		MQSayWnd->SetVisible(true);
+		char* szProcessed = new char[MAX_STRING];
 
-	int pos = MQToSTML(Line.c_str(), szProcessed, MAX_STRING - 4);
+		int pos = MQToSTML(Line.c_str(), szProcessed, MAX_STRING - 4);
 
-	CXStr text = szProcessed;
-	text.append("<br>");
+		CXStr text = szProcessed;
+		text.append("<br>");
 
-	ConvertItemTags(text);
-	sPendingSay.push_back(text);
+		ConvertItemTags(text);
+		sPendingSay.push_back(text);
 
-	delete[] szProcessed;
+		delete[] szProcessed;
+	}
+	else
+	{
+		Line = PLUGIN_MSG "" + Line;
+		WriteChatf(Line.c_str());
+	}
 }
 
 void DoAlerts(const std::string& Line)
@@ -345,7 +356,7 @@ void DoAlerts(const std::string& Line)
 			{
 				if (bSayDebug)
 				{
-					WriteChatf("[\arMQ2Say\ax] \ayDebug\ax: Skipping output due to ignore settings.");
+					WriteChatf(PLUGIN_MSG "\ayDebug\ax: Skipping output due to ignore settings.");
 				}
 			}
 			else
@@ -355,7 +366,7 @@ void DoAlerts(const std::string& Line)
 				{
 					if (strSayAlertCommand[0] == '\0')
 					{
-						WriteChatf("[\arMQ2Say\ax] \arError\ax: \a-wSay Detected, Alerts are turned on, but AlertCommand is not set in the INI\ax");
+						WriteChatf(PLUGIN_MSG "\arError\ax: \a-wSay Detected, Alerts are turned on, but AlertCommand is not set in the INI\ax");
 					}
 					else if (strSayAlertCommand[0] == '/')
 					{
@@ -378,12 +389,13 @@ void DoAlerts(const std::string& Line)
 
 void LoadSaySettings()
 {
-	bSayStatus = GetPrivateProfileBool("Settings", "SayStatus", bSayStatus, INIFileName);
-	bSayDebug = GetPrivateProfileBool("Settings", "SayDebug", bSayDebug, INIFileName);
-	bAutoScroll = GetPrivateProfileBool("Settings", "AutoScroll", bAutoScroll, INIFileName);
-	bSaveByChar = GetPrivateProfileBool("Settings", "SaveByChar", bSaveByChar, INIFileName);
+	bSayStatus = GetPrivateProfileBool("Settings",       "SayStatus",       bSayStatus,       INIFileName);
+	bSayDebug = GetPrivateProfileBool("Settings",        "SayDebug",        bSayDebug,        INIFileName);
+	bAutoScroll = GetPrivateProfileBool("Settings",      "AutoScroll",      bAutoScroll,      INIFileName);
+	bSaveByChar = GetPrivateProfileBool("Settings",      "SaveByChar",      bSaveByChar,      INIFileName);
 	bAlertPerSpeaker = GetPrivateProfileBool("Settings", "AlertPerSpeaker", bAlertPerSpeaker, INIFileName);
-	intIgnoreDelay = GetPrivateProfileInt("Settings", "IgnoreDelay", intIgnoreDelay, INIFileName);
+
+	intIgnoreDelay = GetPrivateProfileInt("Settings",    "IgnoreDelay",     intIgnoreDelay,   INIFileName);
 }
 
 void UpdateszSayINISection()
@@ -406,39 +418,42 @@ void LoadSayFromINI(CSidlScreenWnd* pWindow)
 
 	UpdateszSayINISection();
 
-	bIgnoreGroup = GetPrivateProfileBool(szSayINISection, "IgnoreGroup", bIgnoreGroup, INIFileName);
-	bIgnoreGuild = GetPrivateProfileBool(szSayINISection, "IgnoreGuild", bIgnoreGuild, INIFileName);
+	bIgnoreGroup = GetPrivateProfileBool(szSayINISection,      "IgnoreGroup",      bIgnoreGroup,      INIFileName);
+	bIgnoreGuild = GetPrivateProfileBool(szSayINISection,      "IgnoreGuild",      bIgnoreGuild,      INIFileName);
 	bIgnoreFellowship = GetPrivateProfileBool(szSayINISection, "IgnoreFellowship", bIgnoreFellowship, INIFileName);
-	bIgnoreRaid = GetPrivateProfileBool(szSayINISection, "IgnoreRaid", bIgnoreRaid, INIFileName);
-	bFilterNPC = GetPrivateProfileBool(szSayINISection, "FilterNPC", bFilterNPC, INIFileName);
+	bIgnoreRaid = GetPrivateProfileBool(szSayINISection,       "IgnoreRaid",       bIgnoreRaid,       INIFileName);
+	bFilterNPC = GetPrivateProfileBool(szSayINISection,        "FilterNPC",        bFilterNPC,        INIFileName);
+	bSayAlerts = GetPrivateProfileBool(szSayINISection,        "Alerts",           bSayAlerts,        INIFileName);
 
-	bSayAlerts = GetPrivateProfileBool(szSayINISection, "Alerts", bSayAlerts, INIFileName);
 	const int i = GetPrivateProfileString(szSayINISection, "AlertCommand", "/multiline ; /beep ; /timed 1 /beep ; /timed 2 /beep", strSayAlertCommand, MAX_STRING, INIFileName);
 	if (i == 0)
 	{
 		strcpy_s(strSayAlertCommand, "/multiline ; /beep ; /timed 1 /beep ; /timed 2 /beep");
 	}
 	bSayTimestamps = GetPrivateProfileBool(szSayINISection, "Timestamps", bSayTimestamps, INIFileName);
+	bUseSayWnd = GetPrivateProfileBool(szSayINISection,     "UseWindow",  bUseSayWnd,     INIFileName);
 
 	//The settings for default location are also in the reset command.
-	pWindow->SetLocation({ (LONG)GetPrivateProfileInt(szSayINISection,"SayLeft", 300,INIFileName),
-		(LONG)GetPrivateProfileInt(szSayINISection,"SayTop",       10,INIFileName),
-		(LONG)GetPrivateProfileInt(szSayINISection,"SayRight",    600,INIFileName),
-		(LONG)GetPrivateProfileInt(szSayINISection,"SayBottom",   210,INIFileName) });
+	pWindow->SetLocation({
+		GetPrivateProfileInt(szSayINISection,"SayLeft",   300, INIFileName),
+		GetPrivateProfileInt(szSayINISection,"SayTop",    10,  INIFileName),
+		GetPrivateProfileInt(szSayINISection,"SayRight",  600, INIFileName),
+		GetPrivateProfileInt(szSayINISection,"SayBottom", 210, INIFileName)
+	});
 
-	pWindow->SetLocked((GetPrivateProfileInt(szSayINISection, "Locked", 0, INIFileName) ? true : false));
-	pWindow->SetFades((GetPrivateProfileInt(szSayINISection, "Fades", 0, INIFileName) ? true : false));
-	pWindow->SetFadeDelay(GetPrivateProfileInt(szSayINISection, "Delay", 2000, INIFileName));
-	pWindow->SetFadeDuration(GetPrivateProfileInt(szSayINISection, "Duration", 500, INIFileName));
-	pWindow->SetAlpha((BYTE)GetPrivateProfileInt(szSayINISection, "Alpha", 255, INIFileName));
-	pWindow->SetFadeToAlpha((BYTE)GetPrivateProfileInt(szSayINISection, "FadeToAlpha", 255, INIFileName));
-	pWindow->SetBGType(GetPrivateProfileInt(szSayINISection, "BGType", 1, INIFileName));
+	pWindow->SetLocked((GetPrivateProfileInt(szSayINISection,           "Locked",      0,    INIFileName) ? true : false));
+	pWindow->SetFades((GetPrivateProfileInt(szSayINISection,            "Fades",       0,    INIFileName) ? true : false));
+	pWindow->SetFadeDelay(GetPrivateProfileInt(szSayINISection,         "Delay",       2000, INIFileName));
+	pWindow->SetFadeDuration(GetPrivateProfileInt(szSayINISection,      "Duration",    500,  INIFileName));
+	pWindow->SetAlpha((BYTE)GetPrivateProfileInt(szSayINISection,       "Alpha",       255,  INIFileName));
+	pWindow->SetFadeToAlpha((BYTE)GetPrivateProfileInt(szSayINISection, "FadeToAlpha", 255,  INIFileName));
+	pWindow->SetBGType(GetPrivateProfileInt(szSayINISection,            "BGType",      1,    INIFileName));
 	ARGBCOLOR col = { 0 };
 	col.ARGB = pWindow->GetBGColor();
 	col.A = GetPrivateProfileInt(szSayINISection, "BGTint.alpha", 255, INIFileName);
-	col.R = GetPrivateProfileInt(szSayINISection, "BGTint.red", 0, INIFileName);
-	col.G = GetPrivateProfileInt(szSayINISection, "BGTint.green", 0, INIFileName);
-	col.B = GetPrivateProfileInt(szSayINISection, "BGTint.blue", 0, INIFileName);
+	col.R = GetPrivateProfileInt(szSayINISection, "BGTint.red",   0,   INIFileName);
+	col.G = GetPrivateProfileInt(szSayINISection, "BGTint.green", 0,   INIFileName);
+	col.B = GetPrivateProfileInt(szSayINISection, "BGTint.blue",  0,   INIFileName);
 	pWindow->SetBGColor(col.ARGB);
 	MQSayWnd->SetSayFont(GetPrivateProfileInt(szSayINISection, "FontSize", 4, INIFileName));
 	GetPrivateProfileString(szSayINISection, "WindowTitle", "Say Detection", szTemp, MAX_STRING, INIFileName);
@@ -447,54 +462,58 @@ void LoadSayFromINI(CSidlScreenWnd* pWindow)
 
 void SaveSayToINI(CSidlScreenWnd* pWindow)
 {
-	WritePrivateProfileBool("Settings", "SayStatus", bSayStatus, INIFileName);
-	WritePrivateProfileBool("Settings", "SayDebug", bSayDebug, INIFileName);
-	WritePrivateProfileBool("Settings", "AutoScroll", bAutoScroll, INIFileName);
-	WritePrivateProfileBool("Settings", "SaveByChar", bSaveByChar, INIFileName);
+	WritePrivateProfileBool("Settings", "SayStatus",       bSayStatus,       INIFileName);
+	WritePrivateProfileBool("Settings", "SayDebug",        bSayDebug,        INIFileName);
+	WritePrivateProfileBool("Settings", "AutoScroll",      bAutoScroll,      INIFileName);
+	WritePrivateProfileBool("Settings", "SaveByChar",      bSaveByChar,      INIFileName);
 	WritePrivateProfileBool("Settings", "AlertPerSpeaker", bAlertPerSpeaker, INIFileName);
-	WritePrivateProfileInt("Settings", "IgnoreDelay", intIgnoreDelay, INIFileName);
-	WritePrivateProfileBool(szSayINISection, "IgnoreGroup", bIgnoreGroup, INIFileName);
-	WritePrivateProfileBool(szSayINISection, "IgnoreGuild", bIgnoreGuild, INIFileName);
+
+	WritePrivateProfileInt("Settings",  "IgnoreDelay", intIgnoreDelay, INIFileName);
+
+	WritePrivateProfileBool(szSayINISection, "IgnoreGroup",      bIgnoreGroup,      INIFileName);
+	WritePrivateProfileBool(szSayINISection, "IgnoreGuild",      bIgnoreGuild,      INIFileName);
 	WritePrivateProfileBool(szSayINISection, "IgnoreFellowship", bIgnoreFellowship, INIFileName);
-	WritePrivateProfileBool(szSayINISection, "IgnoreRaid", bIgnoreRaid, INIFileName);
-	WritePrivateProfileBool(szSayINISection, "FilterNPC", bFilterNPC, INIFileName);
-	WritePrivateProfileBool(szSayINISection, "Alerts", bSayAlerts, INIFileName);
-	WritePrivateProfileString(szSayINISection, "AlertCommand", strSayAlertCommand, INIFileName);
-	WritePrivateProfileBool(szSayINISection, "Timestamps", bSayTimestamps, INIFileName);
-	WritePrivateProfileString(szSayINISection, "WindowTitle", pWindow->GetWindowText().c_str(), INIFileName);
+	WritePrivateProfileBool(szSayINISection, "IgnoreRaid",       bIgnoreRaid,       INIFileName);
+	WritePrivateProfileBool(szSayINISection, "FilterNPC",        bFilterNPC,        INIFileName);
+	WritePrivateProfileBool(szSayINISection, "Alerts",           bSayAlerts,        INIFileName);
+	WritePrivateProfileBool(szSayINISection, "Timestamps",       bSayTimestamps,    INIFileName);
+	WritePrivateProfileBool(szSayINISection, "UseWindow",        bUseSayWnd,        INIFileName);
+
+	WritePrivateProfileString(szSayINISection, "AlertCommand", strSayAlertCommand,               INIFileName);
+	WritePrivateProfileString(szSayINISection, "WindowTitle",  pWindow->GetWindowText().c_str(), INIFileName);
 	if (pWindow->IsMinimized())
 	{
-		WritePrivateProfileString(szSayINISection, "SayTop", std::to_string(pWindow->GetOldLocation().top), INIFileName);
+		WritePrivateProfileString(szSayINISection, "SayTop",    std::to_string(pWindow->GetOldLocation().top),    INIFileName);
 		WritePrivateProfileString(szSayINISection, "SayBottom", std::to_string(pWindow->GetOldLocation().bottom), INIFileName);
-		WritePrivateProfileString(szSayINISection, "SayLeft", std::to_string(pWindow->GetOldLocation().left), INIFileName);
-		WritePrivateProfileString(szSayINISection, "SayRight", std::to_string(pWindow->GetOldLocation().right), INIFileName);
+		WritePrivateProfileString(szSayINISection, "SayLeft",   std::to_string(pWindow->GetOldLocation().left),   INIFileName);
+		WritePrivateProfileString(szSayINISection, "SayRight",  std::to_string(pWindow->GetOldLocation().right),  INIFileName);
 	}
 	else
 	{
-		WritePrivateProfileString(szSayINISection, "SayTop", std::to_string(pWindow->GetLocation().top), INIFileName);
+		WritePrivateProfileString(szSayINISection, "SayTop",    std::to_string(pWindow->GetLocation().top),    INIFileName);
 		WritePrivateProfileString(szSayINISection, "SayBottom", std::to_string(pWindow->GetLocation().bottom), INIFileName);
-		WritePrivateProfileString(szSayINISection, "SayLeft", std::to_string(pWindow->GetLocation().left), INIFileName);
-		WritePrivateProfileString(szSayINISection, "SayRight", std::to_string(pWindow->GetLocation().right), INIFileName);
+		WritePrivateProfileString(szSayINISection, "SayLeft",   std::to_string(pWindow->GetLocation().left),   INIFileName);
+		WritePrivateProfileString(szSayINISection, "SayRight",  std::to_string(pWindow->GetLocation().right),  INIFileName);
 	}
-	WritePrivateProfileString(szSayINISection, "Locked", std::to_string(pWindow->IsLocked()), INIFileName);
-	WritePrivateProfileString(szSayINISection, "Fades", std::to_string(pWindow->GetFades()), INIFileName);
-	WritePrivateProfileString(szSayINISection, "Delay", std::to_string(pWindow->GetFadeDelay()), INIFileName);
-	WritePrivateProfileString(szSayINISection, "Duration", std::to_string(pWindow->GetFadeDuration()), INIFileName);
-	WritePrivateProfileString(szSayINISection, "Alpha", std::to_string(pWindow->GetAlpha()), INIFileName);
-	WritePrivateProfileString(szSayINISection, "FadeToAlpha", std::to_string(pWindow->GetFadeToAlpha()), INIFileName);
+	WritePrivateProfileString(szSayINISection, "Locked",      std::to_string(pWindow->IsLocked()),        INIFileName);
+	WritePrivateProfileString(szSayINISection, "Fades",       std::to_string(pWindow->GetFades()),        INIFileName);
+	WritePrivateProfileString(szSayINISection, "Delay",       std::to_string(pWindow->GetFadeDelay()),    INIFileName);
+	WritePrivateProfileString(szSayINISection, "Duration",    std::to_string(pWindow->GetFadeDuration()), INIFileName);
+	WritePrivateProfileString(szSayINISection, "Alpha",       std::to_string(pWindow->GetAlpha()),        INIFileName);
+	WritePrivateProfileString(szSayINISection, "FadeToAlpha", std::to_string(pWindow->GetFadeToAlpha()),  INIFileName);
 	ARGBCOLOR col = { 0 };
 	col.ARGB = pWindow->GetBGColor();
-	WritePrivateProfileString(szSayINISection, "BGType", std::to_string(pWindow->GetBGType()), INIFileName);
-	WritePrivateProfileString(szSayINISection, "BGTint.alpha", std::to_string(col.A), INIFileName);
-	WritePrivateProfileString(szSayINISection, "BGTint.red", std::to_string(col.R), INIFileName);
-	WritePrivateProfileString(szSayINISection, "BGTint.green", std::to_string(col.G), INIFileName);
-	WritePrivateProfileString(szSayINISection, "BGTint.blue", std::to_string(col.B), INIFileName);
-	WritePrivateProfileString(szSayINISection, "FontSize", std::to_string(MQSayWnd->FontSize), INIFileName);
+	WritePrivateProfileString(szSayINISection, "BGType",       std::to_string(pWindow->GetBGType()), INIFileName);
+	WritePrivateProfileString(szSayINISection, "BGTint.alpha", std::to_string(col.A),                INIFileName);
+	WritePrivateProfileString(szSayINISection, "BGTint.red",   std::to_string(col.R),                INIFileName);
+	WritePrivateProfileString(szSayINISection, "BGTint.green", std::to_string(col.G),                INIFileName);
+	WritePrivateProfileString(szSayINISection, "BGTint.blue",  std::to_string(col.B),                INIFileName);
+	WritePrivateProfileString(szSayINISection, "FontSize",     std::to_string(MQSayWnd->FontSize),   INIFileName);
 }
 
 void CreateSayWnd()
 {
-	if (MQSayWnd)
+	if (MQSayWnd || !bUseSayWnd)
 	{
 		return;
 	}
@@ -517,6 +536,16 @@ void DestroySayWnd()
 		MQSayWnd = nullptr;
 
 		iOldVScrollPos = 0;
+	}
+}
+
+void CreateOrDestroySayWnd()
+{
+	CreateSayWnd();
+
+	if (!bUseSayWnd)
+	{
+		DestroySayWnd();
 	}
 }
 
@@ -574,12 +603,12 @@ bool AdjustBoolSetting(const char* SettingCmd, const char* INIsection, const cha
 		WritePrivateProfileString(INIsection, INIkey, currentValue ? "on" : "off", INIFileName);
 	}
 
-	WriteChatf("[\arMQ2Say\ax] \aw%s is: %s", INIkey, (currentValue ? "\agOn" : "\arOff"));
+	WriteChatf(PLUGIN_MSG "\aw%s is: %s", INIkey, (currentValue ? "\agOn" : "\arOff"));
 	return currentValue;
 }
 
 void ShowSetting(bool bSetting, char* szSettingName) {
-	WriteChatf("[\arMQ2Say\ax] \ap%s\aw is currently %s", szSettingName, (bSetting ? "\agOn" : "\arOff"));
+	WriteChatf(PLUGIN_MSG "\ap%s\aw is currently %s", szSettingName, (bSetting ? "\agOn" : "\arOff"));
 }
 
 void MQSay(SPAWNINFO* pChar, char* Line)
@@ -589,7 +618,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 	//Display Command Syntax
 	if (Arg[0] == '\0' || !_stricmp(Arg, "help"))
 	{
-		WriteChatf("[\arMQ2Say\ax] \awPlugin is:\ax %s", bSayStatus ? "\agOn\ax" : "\arOff\ax");
+		WriteChatf(PLUGIN_MSG "\awPlugin is:\ax %s", bSayStatus ? "\agOn\ax" : "\arOff\ax");
 		WriteChatf("Usage: /mqsay <on/off>");
 		WriteChatf("/mqsay [Option Name] <value/on/off>");
 		WriteChatf("Valid options are Reset, Clear, Alerts, AlertPerSpeaker, Autoscroll, IgnoreDelay, Fellowship, Group, Guild, Raid, FilterNPC, Reload, Timestamps, Title, Settings");
@@ -599,20 +628,20 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 	{
 		CreateSayWnd();
 		bSayStatus = true;
-		WriteChatf("[\arMQ2Say\ax] \awSay Status is:\ax \agOn.");
+		WriteChatf(PLUGIN_MSG "\awSay Status is:\ax \agOn.");
 		WritePrivateProfileString("Settings", "SayStatus", bSayStatus ? "on" : "off", INIFileName);
 	}
 	else if (!_stricmp(Arg, "off"))
 	{
 		DestroySayWnd();
 		bSayStatus = false;
-		WriteChatf("[\arMQ2Say\ax] \awSay Status is:\ax \arOff.");
+		WriteChatf(PLUGIN_MSG "\awSay Status is:\ax \arOff.");
 		WritePrivateProfileString("Settings", "SayStatus", bSayStatus ? "on" : "off", INIFileName);
 	}
 	else if (!_stricmp(Arg, "reload"))
 	{
 		LoadSayFromINI(MQSayWnd);
-		WriteChatf("[\arMQ2Say\ax] \a-wPlugin Settings Reloaded.\ax");
+		WriteChatf(PLUGIN_MSG "\a-wPlugin Settings Reloaded.\ax");
 	}
 	else if (!_stricmp(Line, "reset"))
 	{
@@ -627,7 +656,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		}
 		else
 		{
-			WriteChatf("[\arMQ2Say\ax] \awReset is only valid when Say Window is visible (\ag/mqsay on\ax).\ax");
+			WriteChatf(PLUGIN_MSG "\awReset is only valid when Say Window is visible (\ag/mqsay on\ax).\ax");
 		}
 	}
 	else if (!_stricmp(Line, "clear"))
@@ -638,7 +667,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		}
 		else
 		{
-			WriteChatf("[\arMQ2Say\ax] \awClear is only valid when Say Window is visible (\ag/mqsay on\ax).\ax");
+			WriteChatf(PLUGIN_MSG "\awClear is only valid when Say Window is visible (\ag/mqsay on\ax).\ax");
 		}
 	}
 	else if (!_stricmp(Arg, "debug"))
@@ -653,11 +682,11 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		{
 			if (MQSayWnd != nullptr)
 			{
-				WriteChatf("[\arMQ2Say\ax] \awThe Window title is currently:\ax \ar%s\ax", MQSayWnd->GetWindowText().c_str());
+				WriteChatf(PLUGIN_MSG "\awThe Window title is currently:\ax \ar%s\ax", MQSayWnd->GetWindowText().c_str());
 			}
 			else
 			{
-				WriteChatf("[\arMQ2Say\ax] \arSay window not found, cannot retrieve Title.");
+				WriteChatf(PLUGIN_MSG "\arSay window not found, cannot retrieve Title.");
 			}
 		}
 		else
@@ -676,7 +705,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		GetArg(Arg, Line, 2);
 		if (Arg[0] == '\0')
 		{
-			WriteChatf("[\arMQ2Say\ax] \awThe font size is currently:\ax %s", MQSayWnd->FontSize);
+			WriteChatf(PLUGIN_MSG "\awThe font size is currently:\ax %s", MQSayWnd->FontSize);
 		}
 		else if (const int fontSize = GetIntFromString(Arg, 0))
 		{
@@ -693,7 +722,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		GetArg(Arg, Line, 2);
 		if (Arg[0] == '\0')
 		{
-			WriteChatf("[\arMQ2Say\ax] \awThe Ignore Delay is currently:\ax %i", intIgnoreDelay);
+			WriteChatf(PLUGIN_MSG "\awThe Ignore Delay is currently:\ax %i", intIgnoreDelay);
 		}
 		else
 		{
@@ -701,7 +730,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 			if (ignoreDelay >= 0)
 			{
 				intIgnoreDelay = ignoreDelay;
-				WriteChatf("[\arMQ2Say\ax] \awThe Ignore Delay is now set to:\ax %i", intIgnoreDelay);
+				WriteChatf(PLUGIN_MSG "\awThe Ignore Delay is now set to:\ax %i", intIgnoreDelay);
 				WritePrivateProfileString("Settings", "IgnoreDelay", std::to_string(intIgnoreDelay), INIFileName);
 			}
 			else
@@ -750,10 +779,17 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		GetArg(Arg, Line, 2);
 		bSayTimestamps = AdjustBoolSetting("timestamps", szSayINISection, "Timestamps", Arg, bSayTimestamps);
 	}
+	else if (!_stricmp(Arg, "usewindow"))
+	{
+		GetArg(Arg, Line, 2);
+		bUseSayWnd = AdjustBoolSetting("usewindow", szSayINISection, "UseWindow", Arg, bUseSayWnd);
+		CreateOrDestroySayWnd();
+	}
 	else if (!_stricmp(Arg, "autoscroll"))
 	{
 		GetArg(Arg, Line, 2);
 		bAutoScroll = AdjustBoolSetting("autoscroll", szSayINISection, "AutoScroll", Arg, bAutoScroll);
+
 	}
 	else if (!_stricmp(Arg, "SaveByChar"))
 	{
@@ -762,24 +798,25 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 		UpdateszSayINISection();
 	}
 	else if (!_stricmp(Arg, "Settings")) {
-		ShowSetting(bSayStatus, "Plugin");
-		ShowSetting(bSayDebug, "Debug");
-		ShowSetting(bAutoScroll, "Autoscroll");
-		ShowSetting(bSaveByChar, "SaveByChar");
-		ShowSetting(bSayAlerts, "Alerts");
-		ShowSetting(bSayTimestamps, "Timestamps");
-		ShowSetting(bIgnoreGroup, "Ignore Group");
-		ShowSetting(bIgnoreGuild, "Ignore Guild");
+		ShowSetting(bSayStatus,        "Plugin");
+		ShowSetting(bSayDebug,         "Debug");
+		ShowSetting(bAutoScroll,       "Autoscroll");
+		ShowSetting(bSaveByChar,       "SaveByChar");
+		ShowSetting(bSayAlerts,        "Alerts");
+		ShowSetting(bSayTimestamps,    "Timestamps");
+		ShowSetting(bIgnoreGroup,      "Ignore Group");
+		ShowSetting(bIgnoreGuild,      "Ignore Guild");
 		ShowSetting(bIgnoreFellowship, "Ignore Fellowship");
-		ShowSetting(bIgnoreRaid, "Ignore Raid");
-		ShowSetting(bFilterNPC, "Filter NPC");
+		ShowSetting(bIgnoreRaid,       "Ignore Raid");
+		ShowSetting(bFilterNPC,        "Filter NPC");
+		ShowSetting(bUseSayWnd,        "Say Window");
 	}
 	else if (!_stricmp(Arg, "ui") || !_stricmp(Arg, "gui")) {
 		EzCommand("/mqsettings plugins/say");
 	}
 	else
 	{
-		WriteChatf("[\arMQ2Say\ax] %s was not a valid option. Use \ag/mqsay help\ax to show options.", Arg);
+		WriteChatf(PLUGIN_MSG "%s was not a valid option. Use \ag/mqsay help\ax to show options.", Arg);
 	}
 }
 
@@ -797,13 +834,9 @@ PLUGIN_API void OnCleanUI()
 
 PLUGIN_API void SetGameState(int GameState)
 {
-	if (GameState == GAMESTATE_INGAME && !MQSayWnd)
+	if (GameState == GAMESTATE_INGAME && bSayStatus && !MQSayWnd)
 	{
-		// we entered the game, set up shop
-		if (bSayStatus)
-		{
-			CreateSayWnd();
-		}
+		CreateSayWnd();
 	}
 }
 
@@ -894,7 +927,7 @@ public:
 	{
 		Title = 1,
 		LastSay,
-		LastSpeaker
+		LastSpeaker,
 	};
 
 	MQ2SayType() :MQ2Type("saywnd")
@@ -968,16 +1001,18 @@ struct PluginCheckbox {
 };
 
 static const PluginCheckbox checkboxes[] = {
-	{ "SayStatus", "Plugin On / Off", "Settings", &bSayStatus, "Toggle the plugin On / Off.\n\nINI Setting: SayStatus" },
-	{ "SayDebug", "Plugin Debbuging", "Settings", &bSayDebug, "Toggle plugin debugging.\n\nINI Setting: SayDebug" },
-	{ "AutoScroll", "AutoScroll Chat", "Settings", &bAutoScroll, "Toggle autoScrolling of the chat window.\n\nINI Setting: AutoScroll" },
+	{ "SayStatus",  "Plugin On / Off",  "Settings", &bSayStatus,  "Toggle the plugin On / Off.\n\nINI Setting: SayStatus" },
+	{ "SayDebug",   "Plugin Debbuging", "Settings", &bSayDebug,   "Toggle plugin debugging.\n\nINI Setting: SayDebug" },
+	{ "AutoScroll", "AutoScroll Chat",  "Settings", &bAutoScroll, "Toggle autoScrolling of the chat window.\n\nINI Setting: AutoScroll" },
+
 	{ "TimeStamps", "Display Timestamps", szSayINISection, &bSayTimestamps, "Toggle to display timestamps.\n\nINI Setting: TimeStamps" },
+	//{ "UseWindow",  "Say Window",         szSayINISection, &bUseSayWnd,     "Use a dedicated say window.\n\nINI Setting: UseWindow" },
 };
 
 static const PluginCheckbox ignores[] = {
 	{ "IgnoreGroup", "Ignore Group Members", szSayINISection, &bIgnoreGroup, "Toggle to ignore your group from triggering the say alert.\n\nINI Setting: IgnoreGroup" },
-	{ "IgnoreGuild", "Ignore Guild Members", szSayINISection, &bIgnoreGuild,  "Toggle to ignore your guild from triggering the say alert.\n\nINI Setting: IgnoreGuild" },
-	{ "IgnoreFellowship", "Ignore Fellowship Members", szSayINISection, &bIgnoreFellowship,  "Toggle to ignore your fellowship from triggering the say alert.\n\nINI Setting: IgnoreFellowship" },
+	{ "IgnoreGuild", "Ignore Guild Members", szSayINISection, &bIgnoreGuild, "Toggle to ignore your guild from triggering the say alert.\n\nINI Setting: IgnoreGuild" },
+	{ "IgnoreFellowship", "Ignore Fellowship Members", szSayINISection, &bIgnoreFellowship, "Toggle to ignore your fellowship from triggering the say alert.\n\nINI Setting: IgnoreFellowship" },
 	{ "IgnoreRaid", "Ignore Raid Members", szSayINISection, &bIgnoreRaid, "Toggle to ignore your raid from triggering the say alert.\n\nINI Setting: IgnoreRaid" },
 	{ "FilterNPC", "Filter NPCs", szSayINISection, &bFilterNPC, "Toggle to filter non-GM NPCs using the PC Say channel from triggering the say alert.\n\nINI Setting: FilterNPC" },
 };
@@ -995,7 +1030,16 @@ void SayImGuiSettingsPanel()
 		mq::imgui::HelpMarker(cb.helptext);
 	}
 
-	// We need to handle SaveByChar individicually so we reload so the szSayINISection is updated
+	// We need to handle UseSayWnd invidivually so we can call SayWndCreateAndDestroy
+	if (ImGui::Checkbox("Say Window", &bUseSayWnd))
+	{
+		WritePrivateProfileBool(szSayINISection, "UseWindow", bUseSayWnd, INIFileName);
+		CreateOrDestroySayWnd();
+	}
+	ImGui::SameLine();
+	mq::imgui::HelpMarker("Toggle to use a dedicated Say Window.\n\nINI Setting: UseWindow");
+
+	// We need to handle SaveByChar individually so we reload so the szSayINISection is updated
 	if (ImGui::Checkbox("Per Character Settings", &bSaveByChar))
 	{
 		WritePrivateProfileBool("Settings", "SaveByChar", bSaveByChar, INIFileName);
@@ -1059,11 +1103,11 @@ PLUGIN_API void InitializePlugin()
 	LoadSaySettings();
 	if (!bSayStatus)
 	{
-		WriteChatf("[\arMQ2Say\ax] \a-wPlugin Loaded successfully. Window not displayed due to the plugin being turned off in the ini. Type /mqsay on to turn it back on.\ax");
+		WriteChatf(PLUGIN_MSG "\a-wPlugin Loaded successfully. Window not displayed due to the plugin being turned off in the ini. Type /mqsay on to turn it back on.\ax");
 	}
 	else
 	{
-		WriteChatf("[\arMQ2Say\ax] \a-wPlugin Loaded successfully.\ax");
+		WriteChatf(PLUGIN_MSG "\a-wPlugin Loaded successfully.\ax");
 	}
 
 	AddSettingsPanel("plugins/Say", SayImGuiSettingsPanel);
