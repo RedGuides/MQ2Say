@@ -626,14 +626,14 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 	}
 	else if (!_stricmp(Arg, "on"))
 	{
-		CreateOrDestroySayWnd();
+		CreateSayWnd();
 		bSayStatus = true;
 		WriteChatf(PLUGIN_MSG "\awSay Status is:\ax \agOn.");
 		WritePrivateProfileString("Settings", "SayStatus", bSayStatus ? "on" : "off", INIFileName);
 	}
 	else if (!_stricmp(Arg, "off"))
 	{
-		CreateOrDestroySayWnd();
+		DestroySayWnd();
 		bSayStatus = false;
 		WriteChatf(PLUGIN_MSG "\awSay Status is:\ax \arOff.");
 		WritePrivateProfileString("Settings", "SayStatus", bSayStatus ? "on" : "off", INIFileName);
@@ -823,7 +823,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 PLUGIN_API void OnReloadUI()
 {
 	// redraw window when you load/reload UI
-	CreateOrDestroySayWnd();
+	CreateSayWnd();
 }
 
 PLUGIN_API void OnCleanUI()
@@ -836,7 +836,7 @@ PLUGIN_API void SetGameState(int GameState)
 {
 	if (GameState == GAMESTATE_INGAME && bSayStatus && !MQSayWnd)
 	{
-		CreateOrDestroySayWnd();
+		CreateSayWnd();
 	}
 }
 
