@@ -538,11 +538,10 @@ void DestroySayWnd()
 		iOldVScrollPos = 0;
 	}
 }
-void SayWndCreateAndDestroy(bool bDestroyOnly = false);
-void SayWndCreateAndDestroy(bool bDestroyOnly)
+
+void CreateOrDestroySayWnd()
 {
-	if (!bDestroyOnly)
-		CreateSayWnd();
+	CreateSayWnd();
 
 	if (!bUseSayWnd)
 	{
@@ -627,14 +626,14 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 	}
 	else if (!_stricmp(Arg, "on"))
 	{
-		SayWndCreateAndDestroy();
+		CreateOrDestroySayWnd();
 		bSayStatus = true;
 		WriteChatf(PLUGIN_MSG "\awSay Status is:\ax \agOn.");
 		WritePrivateProfileString("Settings", "SayStatus", bSayStatus ? "on" : "off", INIFileName);
 	}
 	else if (!_stricmp(Arg, "off"))
 	{
-		SayWndCreateAndDestroy();
+		CreateOrDestroySayWnd();
 		bSayStatus = false;
 		WriteChatf(PLUGIN_MSG "\awSay Status is:\ax \arOff.");
 		WritePrivateProfileString("Settings", "SayStatus", bSayStatus ? "on" : "off", INIFileName);
@@ -784,7 +783,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 	{
 		GetArg(Arg, Line, 2);
 		bUseSayWnd = AdjustBoolSetting("usewindow", szSayINISection, "UseWindow", Arg, bUseSayWnd);
-		SayWndCreateAndDestroy();
+		CreateOrDestroySayWnd();
 	}
 	else if (!_stricmp(Arg, "autoscroll"))
 	{
@@ -824,20 +823,20 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 PLUGIN_API void OnReloadUI()
 {
 	// redraw window when you load/reload UI
-	SayWndCreateAndDestroy();
+	CreateOrDestroySayWnd();
 }
 
 PLUGIN_API void OnCleanUI()
 {
 	// destroy SayWnd before server select & while reloading UI
-	SayWndCreateAndDestroy(true);
+	DestroySayWnd();
 }
 
 PLUGIN_API void SetGameState(int GameState)
 {
 	if (GameState == GAMESTATE_INGAME && bSayStatus && !MQSayWnd)
 	{
-		SayWndCreateAndDestroy();
+		CreateOrDestroySayWnd();
 	}
 }
 
@@ -1035,7 +1034,7 @@ void SayImGuiSettingsPanel()
 	if (ImGui::Checkbox("Say Window", &bUseSayWnd))
 	{
 		WritePrivateProfileBool(szSayINISection, "UseWindow", bUseSayWnd, INIFileName);
-		SayWndCreateAndDestroy();
+		CreateOrDestroySayWnd();
 	}
 	ImGui::SameLine();
 	mq::imgui::HelpMarker("Toggle to use a dedicated Say Window.\n\nINI Setting: UseWindow");
