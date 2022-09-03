@@ -538,10 +538,12 @@ void DestroySayWnd()
 		iOldVScrollPos = 0;
 	}
 }
-
-void ManageSayWndVisibilityState()
+void SayWndCreateAndDestroy(bool bDestroyOnly = false);
+void SayWndCreateAndDestroy(bool bDestroyOnly)
 {
-	CreateSayWnd();
+	if (!bDestroyOnly)
+		CreateSayWnd();
+
 	if (!bUseSayWnd)
 	{
 		DestroySayWnd();
@@ -625,14 +627,14 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 	}
 	else if (!_stricmp(Arg, "on"))
 	{
-		ManageSayWndVisibilityState();
+		SayWndCreateAndDestroy();
 		bSayStatus = true;
 		WriteChatf(PLUGIN_MSG "\awSay Status is:\ax \agOn.");
 		WritePrivateProfileString("Settings", "SayStatus", bSayStatus ? "on" : "off", INIFileName);
 	}
 	else if (!_stricmp(Arg, "off"))
 	{
-		ManageSayWndVisibilityState();
+		SayWndCreateAndDestroy();
 		bSayStatus = false;
 		WriteChatf(PLUGIN_MSG "\awSay Status is:\ax \arOff.");
 		WritePrivateProfileString("Settings", "SayStatus", bSayStatus ? "on" : "off", INIFileName);
@@ -782,7 +784,7 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 	{
 		GetArg(Arg, Line, 2);
 		bUseSayWnd = AdjustBoolSetting("usewindow", szSayINISection, "UseWindow", Arg, bUseSayWnd);
-		ManageSayWndVisibilityState();
+		SayWndCreateAndDestroy();
 	}
 	else if (!_stricmp(Arg, "autoscroll"))
 	{
@@ -822,20 +824,20 @@ void MQSay(SPAWNINFO* pChar, char* Line)
 PLUGIN_API void OnReloadUI()
 {
 	// redraw window when you load/reload UI
-	ManageSayWndVisibilityState();
+	SayWndCreateAndDestroy();
 }
 
 PLUGIN_API void OnCleanUI()
 {
 	// destroy SayWnd before server select & while reloading UI
-	ManageSayWndVisibilityState();
+	SayWndCreateAndDestroy(true);
 }
 
 PLUGIN_API void SetGameState(int GameState)
 {
 	if (GameState == GAMESTATE_INGAME && bSayStatus && !MQSayWnd)
 	{
-		ManageSayWndVisibilityState();
+		SayWndCreateAndDestroy();
 	}
 }
 
@@ -1029,11 +1031,11 @@ void SayImGuiSettingsPanel()
 		mq::imgui::HelpMarker(cb.helptext);
 	}
 
-	// We need to handle UseSayWnd invidivually so we can call ManageSayWndVisibilityState
+	// We need to handle UseSayWnd invidivually so we can call SayWndCreateAndDestroy
 	if (ImGui::Checkbox("Say Window", &bUseSayWnd))
 	{
 		WritePrivateProfileBool(szSayINISection, "UseWindow", bUseSayWnd, INIFileName);
-		ManageSayWndVisibilityState();
+		SayWndCreateAndDestroy();
 	}
 	ImGui::SameLine();
 	mq::imgui::HelpMarker("Toggle to use a dedicated Say Window.\n\nINI Setting: UseWindow");
