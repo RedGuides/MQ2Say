@@ -1030,7 +1030,7 @@ void SayImGuiSettingsPanel()
 		mq::imgui::HelpMarker(cb.helptext);
 	}
 
-	// We need to handle UseSayWnd invidivually so we can call SayWndCreateAndDestroy
+	// We need to handle UseSayWnd individually so we can call CreateOrDestroySayWnd()
 	if (ImGui::Checkbox("Say Window", &bUseSayWnd))
 	{
 		WritePrivateProfileBool(szSayINISection, "UseWindow", bUseSayWnd, INIFileName);
