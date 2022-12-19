@@ -387,17 +387,6 @@ void DoAlerts(const std::string& Line)
 	}
 }
 
-void LoadSaySettings()
-{
-	bSayStatus = GetPrivateProfileBool("Settings",       "SayStatus",       bSayStatus,       INIFileName);
-	bSayDebug = GetPrivateProfileBool("Settings",        "SayDebug",        bSayDebug,        INIFileName);
-	bAutoScroll = GetPrivateProfileBool("Settings",      "AutoScroll",      bAutoScroll,      INIFileName);
-	bSaveByChar = GetPrivateProfileBool("Settings",      "SaveByChar",      bSaveByChar,      INIFileName);
-	bAlertPerSpeaker = GetPrivateProfileBool("Settings", "AlertPerSpeaker", bAlertPerSpeaker, INIFileName);
-
-	intIgnoreDelay = GetPrivateProfileInt("Settings",    "IgnoreDelay",     intIgnoreDelay,   INIFileName);
-}
-
 void UpdateszSayINISection()
 {
 	if (bSaveByChar && pLocalPlayer)
@@ -410,12 +399,17 @@ void UpdateszSayINISection()
 	}
 }
 
-void LoadSayFromINI(CSidlScreenWnd* pWindow)
+void LoadSaySettings()
 {
-	char szTemp[MAX_STRING] = { 0 };
+	bSayStatus = GetPrivateProfileBool("Settings",       "SayStatus",       bSayStatus,       INIFileName);
+	bSayDebug = GetPrivateProfileBool("Settings",        "SayDebug",        bSayDebug,        INIFileName);
+	bAutoScroll = GetPrivateProfileBool("Settings",      "AutoScroll",      bAutoScroll,      INIFileName);
+	bSaveByChar = GetPrivateProfileBool("Settings",      "SaveByChar",      bSaveByChar,      INIFileName);
+	bAlertPerSpeaker = GetPrivateProfileBool("Settings", "AlertPerSpeaker", bAlertPerSpeaker, INIFileName);
 
-	LoadSaySettings();
+	intIgnoreDelay = GetPrivateProfileInt("Settings",    "IgnoreDelay",     intIgnoreDelay,   INIFileName);
 
+	// this here allows us to get an actual "SaveByChar" value, so we load/save correct values to the szSayIniSection
 	UpdateszSayINISection();
 
 	bIgnoreGroup = GetPrivateProfileBool(szSayINISection,      "IgnoreGroup",      bIgnoreGroup,      INIFileName);
@@ -432,6 +426,11 @@ void LoadSayFromINI(CSidlScreenWnd* pWindow)
 	}
 	bSayTimestamps = GetPrivateProfileBool(szSayINISection, "Timestamps", bSayTimestamps, INIFileName);
 	bUseSayWnd = GetPrivateProfileBool(szSayINISection,     "UseWindow",  bUseSayWnd,     INIFileName);
+}
+
+void LoadSayFromINI(CSidlScreenWnd* pWindow)
+{
+	char szTemp[MAX_STRING] = { 0 };
 
 	//The settings for default location are also in the reset command.
 	pWindow->SetLocation({
