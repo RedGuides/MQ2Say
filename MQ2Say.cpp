@@ -573,7 +573,7 @@ void MQSayClear()
 	}
 }
 
-void SetSayTitle(SPAWNINFO* pChar, char* Line)
+void SetSayTitle(PlayerClient* pChar, char* Line)
 {
 	if (MQSayWnd)
 	{
