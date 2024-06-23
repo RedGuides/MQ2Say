@@ -59,7 +59,7 @@ public:
 		InputBox->AddStyle(CWS_AUTOVSCROLL | CWS_RELATIVERECT | CWS_BORDER); // 0x800C0;
 		SetFaded(false);
 		SetEscapable(false);
-		SetClickable(true);
+		SetClickThrough(true);
 		SetAlpha(0xFF);
 		SetBGType(1);
 
@@ -70,7 +70,7 @@ public:
 		OutputBox->SetParentWindow(this);
 		InputBox->SetParentWindow(this);
 		OutputBox->MaxLines = MAX_CHAT_SIZE;
-		OutputBox->SetClickable(true);
+		OutputBox->SetClickThrough(true);
 		OutputBox->AddStyle(CWS_CLIENTMOVABLE);
 		iCurrentCmd = -1;
 		SetZLayer(1); // Make this the topmost window (we will leave it as such for charselect, and allow it to move to background ingame)
