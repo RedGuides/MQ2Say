@@ -38,8 +38,8 @@ bool bIgnoreRaid = false;
 bool bFilterNPC = false;
 bool bAlertPerSpeaker = true;
 bool bUseSayWnd = true;
-std::string strLastSay = { };
-std::string strLastSpeaker = { };
+std::string strLastSay;
+std::string strLastSpeaker;
 
 class CMQSayWnd;
 CMQSayWnd* MQSayWnd = nullptr;
@@ -47,7 +47,7 @@ CMQSayWnd* MQSayWnd = nullptr;
 class CMQSayWnd : public CCustomWnd
 {
 public:
-	CMQSayWnd(char* Template) : CCustomWnd(Template)
+	CMQSayWnd(const char* Template) : CCustomWnd(Template)
 	{
 		DebugSpew("CMQSayWnd()");
 
@@ -607,11 +607,11 @@ bool AdjustBoolSetting(const char* SettingCmd, const char* INIsection, const cha
 	return currentValue;
 }
 
-void ShowSetting(bool bSetting, char* szSettingName) {
+void ShowSetting(bool bSetting, const char* szSettingName) {
 	WriteChatf(PLUGIN_MSG "\ap%s\aw is currently %s", szSettingName, (bSetting ? "\agOn" : "\arOff"));
 }
 
-void MQSay(SPAWNINFO* pChar, char* Line)
+void MQSay(PlayerClient*, const char* Line)
 {
 	char Arg[MAX_STRING] = { 0 };
 	GetArg(Arg, Line, 1);
