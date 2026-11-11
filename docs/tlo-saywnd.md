@@ -10,9 +10,9 @@ Has a form that returns the current title of the say window, and holds a datatyp
 
 ## Forms
 <!--tlo-forms-start-->
-### {{ renderMember(type='saywnd', name='SayWnd') }}
-
-:   Returns the current title of the say window
+/// member | saywnd SayWnd
+Returns the current title of the say window
+///
 
 <!--tlo-forms-end-->
 

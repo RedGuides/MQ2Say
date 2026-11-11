@@ -10,21 +10,20 @@ Holds a member the returns the title of the say window
 
 ## Members
 <!--dt-members-start-->
-### {{ renderMember(type='string', name='Title') }}
+/// member | string Title
+Returns the current title of the say window
+///
 
-:   Returns the current title of the say window
+/// member | string LastSay
+The last /say received
+///
 
-### {{ renderMember(type='string', name='LastSay') }}
+/// member | string LastSpeaker
+The last character to speak over /say
+///
 
-:   The last /say received
-
-### {{ renderMember(type='string', name='LastSpeaker') }}
-
-:   The last character to speak over /say
-
-### {{ renderMember(type='string', name='To String') }}
-
-:   
+/// member | string To String
+///
 
 <!--dt-members-end-->
 
